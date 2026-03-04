@@ -91,6 +91,24 @@ function levelFromScore(score: number): string {
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
+
+function getCachedMicStream(): MediaStream | null {
+  const w:any = window as any;
+  const s: MediaStream | undefined = w.__mvgMicStream;
+  if (!s) return null;
+  const live = s.getAudioTracks().some((t)=>t.readyState==="live");
+  return live ? s : null;
+}
+
+async function getMicStream(): Promise<MediaStream> {
+  const cached = getCachedMicStream();
+  if (cached) return cached;
+
+  const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
+  (window as any).__mvgMicStream = stream;
+  return stream;
+}
+
 export default function MiniVocalGame() {
   const [stage, setStage] = useState<Stage>('setup');
   const [difficulty, setDifficulty] = useState<Difficulty>('newbie');
@@ -141,7 +159,7 @@ export default function MiniVocalGame() {
   }, []);
 
   const connectMic = async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const stream = await getMicStream();
     const audioCtx = new AudioContext();
     const analyser = audioCtx.createAnalyser();
     analyser.fftSize = 2048;
