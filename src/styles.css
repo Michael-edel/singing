@@ -1,0 +1,10 @@
+:root { font-family: Inter, system-ui, sans-serif; color: #f4f4f4; background: #0e0e12; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+.game { max-width: 760px; margin: 0 auto; padding: 24px; }
+.card { background: #1f1f29; border: 1px solid #313149; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+button, select, a.dm { padding: 10px 12px; border-radius: 10px; border: 1px solid #4f4f7e; background: #2f2f51; color: #fff; text-decoration: none; width: fit-content; }
+.hold.active { background: #6c2bd9; }
+.warning { color: #ffb703; }
+.muted { color: #b7b7cd; }
+ul, ol { margin-top: 0; }
