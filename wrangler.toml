@@ -1,0 +1,8 @@
+name = "singing-mini-vocal-game"
+main = "cloudflare/worker.js"
+compatibility_date = "2026-03-04"
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
