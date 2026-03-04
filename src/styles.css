@@ -66,3 +66,163 @@ ul, ol { margin-top: 0; }
   backdrop-filter: blur(10px);
 }
 
+
+
+/* =========================
+   V5 PRO Premium Studio UI
+   ========================= */
+.v5Shell{
+  min-height: 100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding: 24px;
+  position: relative;
+  overflow:hidden;
+}
+
+.v5Backdrop{
+  position: absolute;
+  inset:-60px;
+  background:
+    radial-gradient(900px 520px at 40% 30%, rgba(255,255,255,0.06), transparent 60%),
+    radial-gradient(820px 520px at 65% 55%, rgba(120,120,255,0.10), transparent 62%),
+    radial-gradient(900px 700px at 55% 80%, rgba(80,200,255,0.06), transparent 65%);
+  filter: blur(0px);
+  pointer-events:none;
+}
+
+.v5Card{
+  width: min(560px, 100%);
+  border-radius: 24px;
+  padding: 22px 22px 16px;
+  background: rgba(16,16,22,0.58);
+  border: 1px solid rgba(255,255,255,0.10);
+  box-shadow:
+    0 40px 140px rgba(0,0,0,0.62),
+    inset 0 0 30px rgba(255,255,255,0.03);
+  backdrop-filter: blur(12px);
+  position: relative;
+}
+
+.v5LogoWrap{
+  border-radius: 18px;
+  padding: 14px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: inset 0 0 30px rgba(255,255,255,0.02);
+}
+
+.v5Logo{
+  width: 100%;
+  height: auto;
+  display:block;
+  filter:
+    brightness(1.15)
+    contrast(1.12)
+    drop-shadow(0 0 22px rgba(150,160,255,0.18))
+    drop-shadow(0 0 60px rgba(120,140,255,0.08));
+  animation: v5Glow 3.2s ease-in-out infinite;
+}
+
+@keyframes v5Glow{
+  0%{ transform: translateY(0) scale(1); filter: brightness(1.12) contrast(1.12) drop-shadow(0 0 18px rgba(150,160,255,0.16)) drop-shadow(0 0 50px rgba(120,140,255,0.07)); }
+  50%{ transform: translateY(-2px) scale(1.01); filter: brightness(1.18) contrast(1.14) drop-shadow(0 0 26px rgba(160,170,255,0.22)) drop-shadow(0 0 70px rgba(120,140,255,0.10)); }
+  100%{ transform: translateY(0) scale(1); }
+}
+
+.v5TitleBlock{
+  padding: 14px 6px 4px;
+  text-align:center;
+}
+
+.v5Kicker{
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-size: 12px;
+  color: rgba(255,255,255,0.60);
+}
+
+.v5Title{
+  margin: 8px 0 6px;
+  font-size: 28px;
+  line-height: 1.1;
+}
+
+.v5Subtitle{
+  margin: 0;
+  font-size: 14px;
+  color: rgba(255,255,255,0.72);
+}
+
+.v5Actions{
+  padding: 12px 6px 8px;
+  display:flex;
+  flex-direction:column;
+  gap: 10px;
+  align-items:center;
+}
+
+.v5PrimaryBtn{
+  width: 100%;
+  border: 0;
+  border-radius: 16px;
+  padding: 14px 18px;
+  font-weight: 650;
+  font-size: 15px;
+  color: rgba(255,255,255,0.96);
+  background: linear-gradient(90deg, #5f6cff 0%, #39b2e6 100%);
+  box-shadow: 0 16px 60px rgba(80,150,255,0.38);
+  cursor:pointer;
+  transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+}
+
+.v5PrimaryBtn:hover{
+  transform: translateY(-1px);
+  box-shadow: 0 22px 78px rgba(80,150,255,0.52);
+  filter: brightness(1.03);
+}
+
+.v5PrimaryBtn:disabled{
+  opacity: 0.75;
+  cursor: default;
+  transform:none;
+  box-shadow: 0 10px 30px rgba(80,150,255,0.26);
+}
+
+.v5Meta{
+  font-size: 12px;
+  color: rgba(255,255,255,0.62);
+  display:flex;
+  align-items:center;
+  gap: 8px;
+  text-align:center;
+  line-height: 1.35;
+}
+
+.v5Dot{
+  width: 8px;
+  height: 8px;
+  border-radius: 99px;
+  background: rgba(160,170,255,0.85);
+  box-shadow: 0 0 18px rgba(160,170,255,0.55);
+}
+
+.v5Hint{
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255,120,120,0.10);
+  border: 1px solid rgba(255,120,120,0.18);
+  color: rgba(255,255,255,0.86);
+  font-size: 13px;
+}
+
+.v5Footer{
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  font-size: 12px;
+  color: rgba(255,255,255,0.56);
+  text-align:center;
+}
