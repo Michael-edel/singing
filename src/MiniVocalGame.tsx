@@ -36,6 +36,31 @@ const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', '
 
 const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
 
+
+function getCachedMicStream(): MediaStream | null {
+  const w: any = window as any;
+  const s: MediaStream | undefined = w.__mvgMicStream;
+  if (!s) return null;
+  const live = s.getAudioTracks().some((t) => t.readyState === 'live');
+  return live ? s : null;
+}
+
+async function getMicStream(): Promise<MediaStream> {
+  const cached = getCachedMicStream();
+  if (cached) return cached;
+
+  const stream = await navigator.mediaDevices.getUserMedia({
+    audio: {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+    },
+    video: false,
+  });
+  (window as any).__mvgMicStream = stream;
+  return stream;
+}
+
 function freqToNote(freq: number): string {
   if (!Number.isFinite(freq) || freq <= 0) return '—';
   const midi = Math.round(12 * Math.log2(freq / 440) + 69);
@@ -91,24 +116,6 @@ function levelFromScore(score: number): string {
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
-
-function getCachedMicStream(): MediaStream | null {
-  const w:any = window as any;
-  const s: MediaStream | undefined = w.__mvgMicStream;
-  if (!s) return null;
-  const live = s.getAudioTracks().some((t)=>t.readyState==="live");
-  return live ? s : null;
-}
-
-async function getMicStream(): Promise<MediaStream> {
-  const cached = getCachedMicStream();
-  if (cached) return cached;
-
-  const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
-  (window as any).__mvgMicStream = stream;
-  return stream;
-}
-
 export default function MiniVocalGame() {
   const [stage, setStage] = useState<Stage>('setup');
   const [difficulty, setDifficulty] = useState<Difficulty>('newbie');
@@ -129,6 +136,9 @@ export default function MiniVocalGame() {
   const [leaderboard, setLeaderboard] = useState<LeaderRecord[]>([]);
   const [cardStyle, setCardStyle] = useState<CardStyle>('minimal');
   const [template, setTemplate] = useState<'template_a' | 'template_b'>('template_a');
+  const [liveScore, setLiveScore] = useState(0);
+  const liveScoreRef = useRef(0);
+  const lastScoreTickRef = useRef(0);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -160,7 +170,8 @@ export default function MiniVocalGame() {
 
   const connectMic = async () => {
     const stream = await getMicStream();
-    const audioCtx = new AudioContext();
+    const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext;
+    const audioCtx = new AudioCtx();
     const analyser = audioCtx.createAnalyser();
     analyser.fftSize = 2048;
     const source = audioCtx.createMediaStreamSource(stream);
@@ -197,6 +208,16 @@ export default function MiniVocalGame() {
         } else {
           silenceStartRef.current = 0;
           centsSamplesRef.current.push(hzToCentsDiff(p, targetFreq));
+        // PRO: live score & ring accuracy (update ~10fps)
+        const centsErr = Math.abs(hzToCentsDiff(p, targetFreq));
+        const accuracy = clamp(1 - centsErr / 100, 0, 1);
+        liveScoreRef.current += accuracy * 0.8; // tune gain
+        const last = lastScoreTickRef.current || 0;
+        if (now - last > 100) {
+          lastScoreTickRef.current = now;
+          setLiveScore(Math.round(liveScoreRef.current));
+        }
+
         }
 
         if (now - holdStartRef.current >= ROUND_MS) {
@@ -264,6 +285,9 @@ export default function MiniVocalGame() {
   };
 
   const startHold = () => {
+    liveScoreRef.current = 0;
+    setLiveScore(0);
+    lastScoreTickRef.current = 0;
     if (autoPaused) return;
     setHolding(true);
     holdStartRef.current = performance.now();
@@ -412,7 +436,20 @@ export default function MiniVocalGame() {
     });
   };
 
-  const shareToStories = async () => {
+  
+  const shareResultText = async () => {
+    const text = `🎤 Мой результат: ${finalScore} (${level}). Сможешь лучше?`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'MiniVocalGame', text, url: window.location.href });
+        return;
+      } catch {}
+    }
+    await navigator.clipboard.writeText(`${text} ${utmUrl}`);
+    alert('Текст результата скопирован в буфер обмена.');
+  };
+
+const shareToStories = async () => {
     const blob = await generateCardBlob();
     const file = new File([blob], 'mini-vocal-result.png', { type: 'image/png' });
     const shareData: ShareData = { files: [file], text: `Мой результат: ${finalScore} (${level})` };
@@ -475,8 +512,23 @@ export default function MiniVocalGame() {
       {stage === 'game' && (
         <section className="card">
           <h2>Раунд {roundIndex + 1} / {TOTAL_ROUNDS}</h2>
-          <p>Целевая нота: <strong>{freqToNote(targetFreq)}</strong> ({Math.round(targetFreq)} Hz)</p>
-          <p>Ваш тон: {freqToNote(pitch)} ({Math.round(pitch)} Hz)</p>
+          <div className="hud">
+            <div className="hudRow">
+              <div className="badge">Live score: <strong>{liveScore}</strong></div>
+              <div className="badge">Target: <strong>{freqToNote(targetFreq)}</strong></div>
+            </div>
+
+            <div className="pitchRing" aria-label="Pitch accuracy">
+              <div
+                className="pitchRingFill"
+                style={{
+                  transform: `scale(${clamp(1 - Math.abs(hzToCentsDiff(pitch, targetFreq)) / 200, 0, 1)})`,
+                }}
+              />
+              <div className="pitchNote">{freqToNote(pitch)}</div>
+              <div className="pitchHz">{Math.round(pitch)} Hz</div>
+            </div>
+          </div>
           <p>{volumeHint}</p>
           {autoPaused ? (
             <>
@@ -524,7 +576,10 @@ export default function MiniVocalGame() {
           </label>
 
           <p>Link sticker URL: <a href={utmUrl} target="_blank" rel="noreferrer">{utmUrl}</a></p>
+          <div className="shareRow">
           <button onClick={shareToStories}>Поделиться в Stories</button>
+          <button onClick={shareResultText}>Поделиться текстом</button>
+          </div>
           <a className="dm" href={`https://ig.me/m/vocal.jivoizvuk.ekb?text=${dmText}`} target="_blank" rel="noreferrer">Открыть DM с текстом</a>
 
           <h3>Последние игры</h3>
