@@ -161,7 +161,10 @@ export default function MiniVocalGame() {
     if (h) setHistory(JSON.parse(h));
     if (s) setStreak(JSON.parse(s).count ?? 0);
     if (b) setLeaderboard(JSON.parse(b));
-    return () => {
+    return (
+    <div className="appShell">
+      <div className="appCard">
+) => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       streamRef.current?.getTracks().forEach((t) => t.stop());
       audioCtxRef.current?.close();
