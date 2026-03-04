@@ -7,7 +7,6 @@ type Props = {
 export default function SplashScreen({ onStart }: Props) {
   const [ready, setReady] = useState(false);
   const [leaving, setLeaving] = useState(false);
-  const [micOn, setMicOn] = useState(false);
   const [status, setStatus] = useState<string>("");
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -28,15 +27,13 @@ export default function SplashScreen({ onStart }: Props) {
   }, []);
 
   useEffect(() => {
+    // Cleanup: we intentionally DO NOT stop the mic stream here.
+    // Reason: Start button requests mic once (iPhone gesture requirement),
+    // then the game can request again without prompting.
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
-
-      try {
-        streamRef.current?.getTracks().forEach((t) => t.stop());
-      } catch {}
-      streamRef.current = null;
-
+      // Close audio ctx if created (safe). Stream left alive.
       try {
         audioCtxRef.current?.close();
       } catch {}
@@ -45,10 +42,8 @@ export default function SplashScreen({ onStart }: Props) {
     };
   }, []);
 
-  async function enableMic() {
-    if (micOn) return;
-
-    setStatus("Запрашиваю микрофон…");
+  async function requestMicForProEffects() {
+    setStatus("Включаю микрофон…");
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -58,6 +53,9 @@ export default function SplashScreen({ onStart }: Props) {
         },
         video: false,
       });
+
+      // Save stream globally so next screen can reuse permission quickly
+      (window as any).__mvgMicStream = stream;
 
       streamRef.current = stream;
 
@@ -73,17 +71,16 @@ export default function SplashScreen({ onStart }: Props) {
       src.connect(analyser);
       analyserRef.current = analyser;
 
-      setMicOn(true);
       setStatus("Микрофон включён ✅");
-
       startVizLoop();
+      return true;
     } catch (e: any) {
       setStatus(
         e?.name === "NotAllowedError"
-          ? "Доступ к микрофону запрещён. Разреши в настройках сайта."
-          : "Не удалось включить микрофон."
+          ? "Микрофон не разрешён — можно включить позже в игре."
+          : "Не удалось включить микрофон. Можно продолжить."
       );
-      setMicOn(false);
+      return false;
     }
   }
 
@@ -153,7 +150,7 @@ export default function SplashScreen({ onStart }: Props) {
         ctx.fillRect(x, y, barW * 0.72, bh);
       }
 
-      // pulse logo
+      // pulse logo from volume
       const avg = average(freqData);
       const pulse = 1 + avg / 650;
       const glow = Math.min(1, avg / 140);
@@ -166,12 +163,16 @@ export default function SplashScreen({ onStart }: Props) {
 
     rafRef.current = requestAnimationFrame(draw);
 
-    // cleanup listener if we ever add stop
-    return () => window.removeEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+    };
   }
 
-  function handleStart() {
+  async function handleStart() {
     if (leaving) return;
+    // Start click => iPhone gesture OK => request mic immediately (no extra button)
+    await requestMicForProEffects();
+
     setLeaving(true);
     window.setTimeout(() => onStart(), prefersReducedMotion ? 0 : 420);
   }
@@ -192,7 +193,7 @@ export default function SplashScreen({ onStart }: Props) {
 
           <div className="proSplash__text">
             <h1 className="proSplash__title">MiniVocalGame</h1>
-            <p className="proSplash__sub">Sing the note. Hold it. Beat the streak.</p>
+            <p className="proSplash__sub">Tap Start → we enable mic → you play.</p>
           </div>
 
           <div className="proSplash__viz">
@@ -200,10 +201,6 @@ export default function SplashScreen({ onStart }: Props) {
           </div>
 
           <div className="proSplash__actions">
-            <button className="proSplash__btn proSplash__btn--ghost" onClick={enableMic}>
-              {micOn ? "Mic: ON ✅" : "Enable Mic (PRO effects)"}
-            </button>
-
             <button className="proSplash__btn proSplash__btn--main" onClick={handleStart}>
               Start
             </button>
@@ -212,7 +209,7 @@ export default function SplashScreen({ onStart }: Props) {
           {status && <div className="proSplash__status">{status}</div>}
 
           <div className="proSplash__hint">
-            iPhone: лучше Safari. “AA → Website Settings → Microphone → Allow”.
+            iPhone: Safari. Если микрофон не включился — разреши “AA → Website Settings → Microphone”.
           </div>
         </div>
       </div>
@@ -375,24 +372,21 @@ function css(reduceMotion: boolean) {
     display:flex;
     gap: 10px;
     flex-wrap: wrap;
+    justify-content:center;
   }
   .proSplash__btn{
-    flex: 1 1 220px;
+    flex: 0 1 320px;
     border: none;
     border-radius: 14px;
     padding: 13px 14px;
     font-size: 15px;
-    font-weight: 800;
+    font-weight: 900;
     cursor: pointer;
     color: rgba(255,255,255,0.92);
   }
   .proSplash__btn--main{
     background: linear-gradient(135deg, rgba(125,110,255,0.95), rgba(75,180,255,0.72));
     box-shadow: 0 16px 44px rgba(120,110,255,0.20);
-  }
-  .proSplash__btn--ghost{
-    background: rgba(255,255,255,0.08);
-    border: 1px solid rgba(255,255,255,0.14);
   }
   .proSplash__btn:active{ transform: translateY(1px); }
 
