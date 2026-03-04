@@ -306,8 +306,7 @@ export default function MiniVocalGame() {
     const now = todayISO();
     const streakState = JSON.parse(localStorage.getItem(STREAK_KEY) || '{"count":0}');
     const prevDate = typeof streakState.date === 'string' ? streakState.date : '';
-    const prev = prevDate ? new Date(prevDate) : null;
-    const diffDays = prev ? Math.floor((new Date(now).getTime() - prev.getTime()) / 86400000) : 0;
+    const diffDays = prevDate ? Math.floor((+new Date(now) - +new Date(prevDate)) / 86400000) : 0;
     const count = !prevDate ? 1 : diffDays <= 0 ? streakState.count : diffDays === 1 ? streakState.count + 1 : 1;
     localStorage.setItem(STREAK_KEY, JSON.stringify({ count, date: now }));
     setStreak(count);
