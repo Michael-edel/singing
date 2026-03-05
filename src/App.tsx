@@ -2,14 +2,22 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import MiniVocalGame from "./MiniVocalGame";
 import SplashScreen from "./SplashScreen";
+import GameMenu from "./components/GameMenu";
 import { AuthPanel } from "./components/AuthPanel";
 import { LeaderboardTable } from "./components/LeaderboardTable";
-import GameMenu from "./components/GameMenu";
 
-type User = { id: string; name?: string; email?: string; avatar?: string; provider?: string };
+type User = {
+  id: string;
+  name?: string;
+  email?: string;
+  avatar?: string;
+  provider?: string;
+};
+
+type Screen = "splash" | "menu" | "game";
 
 export default function App() {
-  type Screen = "splash" | "menu" | "game";
+
   const [screen, setScreen] = useState<Screen>("splash");
   const [user, setUser] = useState<User | null>(null);
 
@@ -24,7 +32,6 @@ export default function App() {
     } catch {}
   }
 
-  // keep user fresh after refresh
   useEffect(() => {
     (async () => {
       try {
@@ -38,53 +45,36 @@ export default function App() {
 
   return (
     <div className="appShell">
+
       <div className="topArea">
         <AuthPanel user={user} onUser={setUser} />
       </div>
 
       <AnimatePresence mode="wait">
-        {screen === "splash" ? (
-          <motion.div
-            key="splash"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.35 }}
-          >
-            <SplashScreen onStart={() => setScreen("menu")} />
-          </motion.div>
-        ) : screen === "menu" ? (
-          <motion.div
-            key="menu"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.35 }}
-          >
-            <GameMenu
-              onStart={() => setScreen("game")}
-              onLeaderboard={() => {
-                const el = document.querySelector(".bottomArea");
-                el?.scrollIntoView({ behavior: "smooth", block: "start" });
-              }}
-            />
-          </motion.div>
-        ) : (
-          <motion.div
-            key="game"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.35 }}
-          >
-            <MiniVocalGame user={user} onSubmitScore={submitScore} />
-          </motion.div>
+
+        {screen === "splash" && (
+          <SplashScreen onStart={() => setScreen("menu")} />
         )}
+
+        {screen === "menu" && (
+          <GameMenu
+            onStart={() => setScreen("game")}
+          />
+        )}
+
+        {screen === "game" && (
+          <MiniVocalGame
+            user={user}
+            onSubmitScore={submitScore}
+          />
+        )}
+
       </AnimatePresence>
 
       <div className="bottomArea">
         <LeaderboardTable currentUserId={user?.id} />
       </div>
+
     </div>
   );
 }
