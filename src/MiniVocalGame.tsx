@@ -14,8 +14,6 @@ const STREAK_KEY = 'mini-vocal-streak';
 const BOARD_KEY = 'mini-vocal-weekly-board';
 
 type Stage = 'setup' | 'calibration' | 'game' | 'results';
-// Micro state machine for audio/gameplay UX (helps UI decisions & future V12 work)
-type GameState = 'IDLE' | 'LISTENING' | 'SINGING' | 'PAUSED' | 'RESULT';
 type Difficulty = 'newbie' | 'pro';
 type CalibStep = 'low' | 'high' | 'done';
 type CardStyle = 'minimal' | 'neon' | 'karaoke';
@@ -76,15 +74,6 @@ function freqToNote(freq: number): string {
   return `${note}${octave}`;
 }
 
-// Helpers used by V12 features (timeline, ring, daily challenge)
-function freqToMidi(freq: number): number {
-  return 12 * Math.log2(freq / 440) + 69;
-}
-
-function midiToFreq(midi: number): number {
-  return 440 * Math.pow(2, (midi - 69) / 12);
-}
-
 function hzToCentsDiff(freq: number, target: number): number {
   if (freq <= 0 || target <= 0) return 1200;
   return 1200 * Math.log2(freq / target);
@@ -114,8 +103,6 @@ function yinPitch(
   const maxTau = Math.floor(sampleRate / minHz);
   if (minTau < 2 || maxTau <= minTau + 2) return null;
 
-  // NOTE: allocations here are expensive in the audio loop.
-  // In the realtime loop we use yinPitchCached() to reuse buffers.
   const diff = new Float32Array(maxTau + 1);
   const cmndf = new Float32Array(maxTau + 1);
 
@@ -157,6 +144,7 @@ function yinPitch(
   if (denom !== 0) betterTau = tauEstimate + (s2 - s0) / (2 * denom);
 
   const hz = sampleRate / betterTau;
+        const p = hz; // alias used by calibration/game logic
   const probability = clamp(1 - cmndf[tauEstimate], 0, 1);
 
   if (!Number.isFinite(hz) || hz <= 0) return null;
@@ -173,77 +161,6 @@ function stabilizeHz(prevHz: number | null, nextHz: number, maxJumpCents = 80): 
   const cents = 1200 * Math.log2(nextHz / prevHz);
   if (Math.abs(cents) > maxJumpCents) return prevHz;
   return nextHz;
-}
-
-type YinCache = {
-  diff: Float32Array;
-  cmndf: Float32Array;
-  maxTau: number;
-};
-
-// Cached YIN variant for the audio loop (no per-frame allocations for diff/cmndf)
-function yinPitchCached(
-  buffer: Float32Array,
-  sampleRate: number,
-  cache: YinCache,
-  minHz = 80,
-  maxHz = 1000,
-  threshold = 0.15
-): YinResult {
-  const SIZE = buffer.length;
-  const minTau = Math.floor(sampleRate / maxHz);
-  const maxTau = Math.floor(sampleRate / minHz);
-  if (minTau < 2 || maxTau <= minTau + 2) return null;
-
-  if (cache.maxTau !== maxTau) {
-    cache.maxTau = maxTau;
-    cache.diff = new Float32Array(maxTau + 1);
-    cache.cmndf = new Float32Array(maxTau + 1);
-  }
-
-  const diff = cache.diff;
-  const cmndf = cache.cmndf;
-
-  for (let tau = 1; tau <= maxTau; tau += 1) {
-    let sum = 0;
-    for (let i = 0; i < SIZE - tau; i += 1) {
-      const d = buffer[i] - buffer[i + tau];
-      sum += d * d;
-    }
-    diff[tau] = sum;
-  }
-
-  cmndf[0] = 1;
-  let runningSum = 0;
-  for (let tau = 1; tau <= maxTau; tau += 1) {
-    runningSum += diff[tau];
-    cmndf[tau] = diff[tau] * (tau / (runningSum || 1e-12));
-  }
-
-  let tauEstimate = -1;
-  for (let tau = minTau; tau <= maxTau; tau += 1) {
-    if (cmndf[tau] < threshold) {
-      while (tau + 1 <= maxTau && cmndf[tau + 1] < cmndf[tau]) tau += 1;
-      tauEstimate = tau;
-      break;
-    }
-  }
-  if (tauEstimate === -1) return null;
-
-  const x0 = tauEstimate - 1 >= 1 ? tauEstimate - 1 : tauEstimate;
-  const x2 = tauEstimate + 1 <= maxTau ? tauEstimate + 1 : tauEstimate;
-  const s0 = cmndf[x0];
-  const s1 = cmndf[tauEstimate];
-  const s2 = cmndf[x2];
-  const denom = 2 * s1 - s2 - s0;
-
-  let betterTau = tauEstimate;
-  if (denom !== 0) betterTau = tauEstimate + (s2 - s0) / (2 * denom);
-
-  const hz = sampleRate / betterTau;
-  const probability = clamp(1 - cmndf[tauEstimate], 0, 1);
-  if (!Number.isFinite(hz) || hz <= 0) return null;
-  return { hz, probability };
 }
 
 
@@ -288,9 +205,6 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
   const smoothHzRef = useRef<number | null>(null);
-  const audioBufferRef = useRef<Float32Array | null>(null);
-  const yinCacheRef = useRef<YinCache>({ diff: new Float32Array(1), cmndf: new Float32Array(1), maxTau: -1 });
-  const gameStateRef = useRef<GameState>('IDLE');
 
   const calibCollectedRef = useRef<number[]>([]);
   const calibStartRef = useRef<number>(0);
@@ -330,29 +244,17 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
 
     const tick = () => {
       if (!analyserRef.current || !audioCtxRef.current) return;
-
-      // Reuse buffer to avoid per-frame allocations (important for 60fps UI)
-      const fftSize = analyserRef.current.fftSize;
-      if (!audioBufferRef.current || audioBufferRef.current.length !== fftSize) {
-        audioBufferRef.current = new Float32Array(fftSize);
-      }
-      const buffer = audioBufferRef.current;
-
+      const buffer = new Float32Array(analyserRef.current.fftSize) as unknown as Float32Array<ArrayBuffer>;
       analyserRef.current.getFloatTimeDomainData(buffer);
       const rms = rmsFromBuffer(buffer);
+        const p = pitch;
+      const yin = rms >= 0.01 ? yinPitch(buffer, audioCtxRef.current.sampleRate) : null;
+      setConfidence(yin ? yin.probability : 0);
 
-      // Pitch detection (YIN) — ignore low-confidence detections
-      const yin = rms >= 0.01 ? yinPitchCached(buffer, audioCtxRef.current.sampleRate, yinCacheRef.current) : null;
-      const conf = yin ? yin.probability : 0;
-      setConfidence(conf);
-
-      // Pitch smoothing: stabilize large jumps + exponential smoothing
-      // (V12 rule-of-thumb: ignore when confidence < 0.8)
       let hz = 0;
-      if (yin && conf >= 0.8) {
-        hz = stabilizeHz(smoothHzRef.current, yin.hz, 80);
-        // prev*0.8 + next*0.2  => alpha=0.2
-        hz = ema(smoothHzRef.current, hz, 0.2);
+      if (yin && yin.probability >= 0.6) {
+        hz = stabilizeHz(smoothHzRef.current, yin.hz, 90);
+        hz = ema(smoothHzRef.current, hz, 0.25);
         smoothHzRef.current = hz;
       } else {
         smoothHzRef.current = null;
@@ -361,20 +263,13 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
       setPitch(hz);
       setVolume(rms);
 
-      // Update micro game state (for UI + future features)
-      if (stage === 'results') gameStateRef.current = 'RESULT';
-      else if (stage !== 'game') gameStateRef.current = 'LISTENING';
-      else if (autoPaused) gameStateRef.current = 'PAUSED';
-      else if (holding) gameStateRef.current = hz > 0 ? 'SINGING' : 'LISTENING';
-      else gameStateRef.current = 'LISTENING';
-
       if (stage === 'calibration') {
-        if (hz > 0) calibCollectedRef.current.push(hz);
+        if (p > 0) calibCollectedRef.current.push(p);
       }
 
       if (stage === 'game' && holding && !autoPaused) {
         const now = performance.now();
-        const silent = rms < 0.012 || hz <= 0;
+        const silent = rms < 0.012 || p <= 0;
         if (silent) {
           if (!silenceStartRef.current) silenceStartRef.current = now;
           if (now - silenceStartRef.current > SILENCE_AUTOPAUSE_MS) {
@@ -384,9 +279,9 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
           }
         } else {
           silenceStartRef.current = 0;
-          centsSamplesRef.current.push(hzToCentsDiff(hz, targetFreq));
+          centsSamplesRef.current.push(hzToCentsDiff(p, targetFreq));
         // PRO: live score & ring accuracy (update ~10fps)
-        const centsErr = Math.abs(hzToCentsDiff(hz, targetFreq));
+        const centsErr = Math.abs(hzToCentsDiff(p, targetFreq));
         const accuracy = clamp(1 - centsErr / 100, 0, 1);
         liveScoreRef.current += accuracy * 0.8; // tune gain
         const last = lastScoreTickRef.current || 0;
@@ -452,10 +347,10 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
 
   const prepareRound = (idx: number) => {
     setRoundIndex(idx);
-    const lowMidi = Math.round(freqToMidi(range.low));
-    const highMidi = Math.round(freqToMidi(range.high));
+    const lowMidi = Math.round(12 * Math.log2(range.low / 440) + 69);
+    const highMidi = Math.round(12 * Math.log2(range.high / 440) + 69);
     const midi = Math.round(lowMidi + Math.random() * Math.max(1, highMidi - lowMidi));
-    setTargetFreq(midiToFreq(midi));
+    setTargetFreq(440 * Math.pow(2, (midi - 69) / 12));
     setHolding(false);
     setAutoPaused(false);
     setPauseMsg('');
