@@ -267,7 +267,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
           centsSamplesRef.current.push(hzToCentsDiff(p, targetFreq));
 
           // V15: pitch trace points (throttled UI updates)
-          if (yin && yin.probability >= 0.8) {
+          if (res && res.probability >= 0.8) {
             const cents = hzToCentsDiff(p, targetFreq);
             const grade = gradeFromAbsCents(Math.abs(cents));
             tracePointsRef.current.push({ t: Date.now(), cents, grade });
