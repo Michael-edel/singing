@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { AccuracyRing } from './components/AccuracyRing';
 
 const TOTAL_ROUNDS = 5;
 const CALIBRATION_MS = 6000;
@@ -74,39 +76,89 @@ function hzToCentsDiff(freq: number, target: number): number {
   return 1200 * Math.log2(freq / target);
 }
 
-function detectPitchFromBuffer(buffer: Float32Array, sampleRate: number): number {
-  let rms = 0;
-  for (let i = 0; i < buffer.length; i += 1) rms += buffer[i] * buffer[i];
-  rms = Math.sqrt(rms / buffer.length);
-  if (rms < 0.01) return 0;
-
-  const SIZE = buffer.length;
-  const correlations = new Array(SIZE).fill(0);
-  let bestOffset = -1;
-  let bestCorrelation = 0;
-
-  for (let offset = 8; offset < SIZE / 2; offset += 1) {
-    let correlation = 0;
-    for (let i = 0; i < SIZE / 2; i += 1) {
-      correlation += Math.abs(buffer[i] - buffer[i + offset]);
-    }
-    correlation = 1 - correlation / (SIZE / 2);
-    correlations[offset] = correlation;
-    if (correlation > bestCorrelation) {
-      bestCorrelation = correlation;
-      bestOffset = offset;
-    }
-  }
-
-  if (bestOffset > 0 && bestCorrelation > 0.75) {
-    let shift = 0;
-    if (bestOffset + 1 < correlations.length) {
-      shift = (correlations[bestOffset + 1] - correlations[bestOffset - 1]) / correlations[bestOffset];
-    }
-    return sampleRate / (bestOffset + 8 * shift);
-  }
-  return 0;
+function rmsFromBuffer(buffer: Float32Array): number {
+  let sum = 0;
+  for (let i = 0; i < buffer.length; i += 1) sum += buffer[i] * buffer[i];
+  return Math.sqrt(sum / buffer.length);
 }
+
+type YinResult = { hz: number; probability: number } | null;
+
+/**
+ * YIN pitch detection (time-domain). Better for vocal fundamental than FFT peak picking.
+ * Returns null when pitch is not confident.
+ */
+function yinPitch(
+  buffer: Float32Array,
+  sampleRate: number,
+  minHz = 80,
+  maxHz = 1000,
+  threshold = 0.15
+): YinResult {
+  const SIZE = buffer.length;
+  const minTau = Math.floor(sampleRate / maxHz);
+  const maxTau = Math.floor(sampleRate / minHz);
+  if (minTau < 2 || maxTau <= minTau + 2) return null;
+
+  const diff = new Float32Array(maxTau + 1);
+  const cmndf = new Float32Array(maxTau + 1);
+
+  for (let tau = 1; tau <= maxTau; tau += 1) {
+    let sum = 0;
+    for (let i = 0; i < SIZE - tau; i += 1) {
+      const d = buffer[i] - buffer[i + tau];
+      sum += d * d;
+    }
+    diff[tau] = sum;
+  }
+
+  cmndf[0] = 1;
+  let runningSum = 0;
+  for (let tau = 1; tau <= maxTau; tau += 1) {
+    runningSum += diff[tau];
+    cmndf[tau] = diff[tau] * (tau / (runningSum || 1e-12));
+  }
+
+  let tauEstimate = -1;
+  for (let tau = minTau; tau <= maxTau; tau += 1) {
+    if (cmndf[tau] < threshold) {
+      while (tau + 1 <= maxTau && cmndf[tau + 1] < cmndf[tau]) tau += 1;
+      tauEstimate = tau;
+      break;
+    }
+  }
+  if (tauEstimate === -1) return null;
+
+  // Parabolic interpolation for better accuracy
+  const x0 = tauEstimate - 1 >= 1 ? tauEstimate - 1 : tauEstimate;
+  const x2 = tauEstimate + 1 <= maxTau ? tauEstimate + 1 : tauEstimate;
+  const s0 = cmndf[x0];
+  const s1 = cmndf[tauEstimate];
+  const s2 = cmndf[x2];
+  const denom = 2 * s1 - s2 - s0;
+
+  let betterTau = tauEstimate;
+  if (denom !== 0) betterTau = tauEstimate + (s2 - s0) / (2 * denom);
+
+  const hz = sampleRate / betterTau;
+  const probability = clamp(1 - cmndf[tauEstimate], 0, 1);
+
+  if (!Number.isFinite(hz) || hz <= 0) return null;
+  return { hz, probability };
+}
+
+function ema(prev: number | null, next: number, alpha = 0.25): number {
+  if (prev == null) return next;
+  return prev + alpha * (next - prev);
+}
+
+function stabilizeHz(prevHz: number | null, nextHz: number, maxJumpCents = 80): number {
+  if (prevHz == null) return nextHz;
+  const cents = 1200 * Math.log2(nextHz / prevHz);
+  if (Math.abs(cents) > maxJumpCents) return prevHz;
+  return nextHz;
+}
+
 
 function levelFromScore(score: number): string {
   if (score >= 85) return 'Профи';
@@ -127,6 +179,7 @@ export default function MiniVocalGame() {
   const [volume, setVolume] = useState(0);
   const [roundIndex, setRoundIndex] = useState(0);
   const [targetFreq, setTargetFreq] = useState(220);
+  const liveCents = useMemo(() => (pitch > 0 && targetFreq > 0 ? centsOff(pitch, targetFreq) : 0), [pitch, targetFreq]);
   const [holding, setHolding] = useState(false);
   const [autoPaused, setAutoPaused] = useState(false);
   const [pauseMsg, setPauseMsg] = useState('');
@@ -145,6 +198,7 @@ export default function MiniVocalGame() {
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
+  const smoothHzRef = useRef<number | null>(null);
 
   const calibCollectedRef = useRef<number[]>([]);
   const calibStartRef = useRef<number>(0);
@@ -186,9 +240,19 @@ export default function MiniVocalGame() {
       if (!analyserRef.current || !audioCtxRef.current) return;
       const buffer = new Float32Array(analyserRef.current.fftSize);
       analyserRef.current.getFloatTimeDomainData(buffer);
-      const p = detectPitchFromBuffer(buffer, audioCtxRef.current.sampleRate);
-      const rms = Math.sqrt(buffer.reduce((acc, item) => acc + item * item, 0) / buffer.length);
-      setPitch(p);
+      const rms = rmsFromBuffer(buffer);
+      const yin = rms >= 0.01 ? yinPitch(buffer, audioCtxRef.current.sampleRate) : null;
+
+      let hz = 0;
+      if (yin && yin.probability >= 0.6) {
+        hz = stabilizeHz(smoothHzRef.current, yin.hz, 90);
+        hz = ema(smoothHzRef.current, hz, 0.25);
+        smoothHzRef.current = hz;
+      } else {
+        smoothHzRef.current = null;
+      }
+
+      setPitch(hz);
       setVolume(rms);
 
       if (stage === 'calibration') {
@@ -480,12 +544,14 @@ const shareToStories = async () => {
   };
 
   return (
-    <div className="game">
+    <div className="v5Shell v6Shell">
+      <div className="v5Backdrop" aria-hidden />
+      <div className="v5Card v6GameCard">
       <h1>MiniVocalGame — IG Challenge</h1>
       <p className="muted">Ограничение Instagram: авто‑публикация сторис со стикерами ограничена. Используйте Share Sheet + добавьте стикеры вручную.</p>
 
       {stage === 'setup' && (
-        <section className="card">
+        <section className="v6Section">
           <h2>Настройка</h2>
           <label>
             Сложность:
@@ -500,7 +566,7 @@ const shareToStories = async () => {
       )}
 
       {stage === 'calibration' && (
-        <section className="card">
+        <section className="v6Section">
           <h2>Калибровка диапазона</h2>
           <p>{calibStep === 'low' ? 'Спойте низкую комфортную ноту (6 сек)' : 'Спойте высокую комфортную ноту (6 сек)'}</p>
           <p>Осталось: {(calibLeftMs / 1000).toFixed(1)} c</p>
@@ -510,8 +576,11 @@ const shareToStories = async () => {
       )}
 
       {stage === 'game' && (
-        <section className="card">
+        <section className="v6Section">
           <h2>Раунд {roundIndex + 1} / {TOTAL_ROUNDS}</h2>
+          <div className=\"v6Center\">
+            <AccuracyRing cents={liveCents} />
+          </div>
           <div className="hud">
             <div className="hudRow">
               <div className="badge">Live score: <strong>{liveScore}</strong></div>
@@ -550,7 +619,7 @@ const shareToStories = async () => {
       )}
 
       {stage === 'results' && (
-        <section className="card">
+        <section className="v6Section">
           <h2>Результаты</h2>
           <p>Итоговый счёт: <strong>{finalScore}</strong></p>
           <p>Уровень: <strong>{level}</strong></p>
@@ -592,6 +661,7 @@ const shareToStories = async () => {
           <button onClick={resetAll}>Полный перезапуск челленджа</button>
         </section>
       )}
+      </div>
     </div>
   );
 }

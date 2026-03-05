@@ -1,4 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
+import { motion } from "framer-motion";
+import { GlowButton } from "./components/GlowButton";
 
 type Props = {
   onStart: () => Promise<void> | void;
@@ -25,9 +27,17 @@ export default function SplashScreen({ onStart, statusText }: Props) {
   return (
     <div className="v5Shell">
       <div className="v5Backdrop" aria-hidden />
-      <div className="v5Card">
+      <motion.div className="v5Card"
+        initial={{ opacity: 0, y: 22 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.55, ease: "easeOut" }}
+      >
         <div className="v5LogoWrap">
-          <img className="v5Logo" src="/logo_dark.png" alt="Jivoi Zvuk vocal studio" />
+          <motion.img className="v5Logo" src="/logo_dark.png" alt="Jivoi Zvuk vocal studio"
+            initial={{ opacity: 0, scale: 0.94 }}
+            animate={{ opacity: 1, scale: [0.98, 1.02, 0.98] }}
+            transition={{ duration: 3.0, repeat: Infinity, ease: "easeInOut" }}
+          />
         </div>
 
         <div className="v5TitleBlock">
@@ -52,7 +62,7 @@ export default function SplashScreen({ onStart, statusText }: Props) {
         <div className="v5Footer">
           <span>Tip:</span> use headphones for best accuracy.
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
