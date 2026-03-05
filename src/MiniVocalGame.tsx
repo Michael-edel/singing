@@ -168,6 +168,12 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
   const smoothHzRef = useRef<number | null>(null);
+  // V24: allocation-free pitch smoothing (median-of-5 + EMA)
+  const hzRingRef = useRef<Float64Array | null>(null);
+  const hzRingTmpRef = useRef<Float64Array | null>(null);
+  const hzRingIdxRef = useRef(0);
+  const hzRingCountRef = useRef(0);
+  const emaHzRef = useRef<number | null>(null);
   const audioBufferRef = useRef<Float32Array<ArrayBuffer> | null>(null);
 
   const calibCollectedRef = useRef<number[]>([]);
@@ -236,11 +242,49 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
       const rms = res?.rms ?? 0;
       setConfidence(res ? res.probability : 0);
 
-      const hz = res ? res.hz : 0;
+      // V24: voiced gate + smoothing to reduce jitter (mobile-friendly)
+      const prob = res?.probability ?? 0;
+      const voiced = !!res && prob >= 0.6 && rms >= 0.012;
+      let hz = voiced ? res!.hz : 0;
+
       if (hz > 0) {
-        smoothHzRef.current = hz;
+        // init buffers once (no allocations in hot loop)
+        if (!hzRingRef.current) hzRingRef.current = new Float64Array(5);
+        if (!hzRingTmpRef.current) hzRingTmpRef.current = new Float64Array(5);
+
+        const ring = hzRingRef.current;
+        const tmp = hzRingTmpRef.current;
+
+        ring[hzRingIdxRef.current] = hz;
+        hzRingIdxRef.current = (hzRingIdxRef.current + 1) % ring.length;
+        hzRingCountRef.current = Math.min(ring.length, hzRingCountRef.current + 1);
+
+        // copy to tmp and sort (small n=5)
+        const n = hzRingCountRef.current;
+        for (let i = 0; i < n; i++) tmp[i] = ring[i];
+        for (let i = 1; i < n; i++) {
+          const key = tmp[i];
+          let j = i - 1;
+          while (j >= 0 && tmp[j] > key) {
+            tmp[j + 1] = tmp[j];
+            j--;
+          }
+          tmp[j + 1] = key;
+        }
+        const medianHz = tmp[Math.floor((n - 1) / 2)];
+
+        const prev = emaHzRef.current;
+        const alpha = 0.2;
+        const smoothHz = prev == null ? medianHz : prev + alpha * (medianHz - prev);
+        emaHzRef.current = smoothHz;
+        smoothHzRef.current = smoothHz;
+
+        hz = smoothHz;
       } else {
         smoothHzRef.current = null;
+        hzRingIdxRef.current = 0;
+        hzRingCountRef.current = 0;
+        emaHzRef.current = null;
         pitchEngineRef.current.resetSmoothing();
       }
 
@@ -267,7 +311,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
           centsSamplesRef.current.push(hzToCentsDiff(p, targetFreq));
 
           // V15: pitch trace points (throttled UI updates)
-          if (res && res.probability >= 0.8) {
+          if (res && res.probability >= 0.6) {
             const cents = hzToCentsDiff(p, targetFreq);
             const grade = gradeFromAbsCents(Math.abs(cents));
             tracePointsRef.current.push({ t: Date.now(), cents, grade });
