@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useI18n } from "./i18n";
 
@@ -11,6 +11,12 @@ export default function SplashScreen({ onStart, statusText }: Props) {
   const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [hint, setHint] = useState<string>("");
+  const [showIntro, setShowIntro] = useState(true);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setShowIntro(false), 2600);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const handleStart = async () => {
     try {
@@ -28,6 +34,20 @@ export default function SplashScreen({ onStart, statusText }: Props) {
   return (
     <div className="v5Shell">
       <div className="v5Backdrop" aria-hidden />
+
+      {showIntro ? (
+        <button
+          className="introOverlay"
+          onClick={() => setShowIntro(false)}
+          aria-label="Skip intro"
+          type="button"
+        >
+          <video className="introVideo" autoPlay muted playsInline>
+            <source src="/logo_intro.mp4" type="video/mp4" />
+          </video>
+        </button>
+      ) : null}
+
       <motion.div className="v5Card"
         initial={{ opacity: 0, y: 22 }}
         animate={{ opacity: 1, y: 0 }}

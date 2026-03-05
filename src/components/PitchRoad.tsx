@@ -1,51 +1,112 @@
+import { useEffect, useMemo, useRef } from "react";
 
-import { useRef,useEffect } from "react";
+export type PitchGrade = "perfect" | "great" | "good" | "bad";
 
-type Point={cents:number};
+export type PitchPoint = {
+  t: number; // epoch ms
+  cents: number; // signed
+  grade: PitchGrade;
+};
 
-type Props={points:Point[]};
+type Props = {
+  points: PitchPoint[];
+  windowMs?: number; // default 6000
+};
 
-export default function PitchRoad({points}:Props){
- const canvasRef=useRef<HTMLCanvasElement>(null);
+// Smule-style pitch road: target line in the middle (0 cents),
+// player trace as colored segments by grade.
+export default function PitchRoad({ points, windowMs = 6000 }: Props) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
- useEffect(()=>{
-  const canvas=canvasRef.current;
-  if(!canvas)return;
+  const normalized = useMemo(() => {
+    if (!points.length) return [] as PitchPoint[];
+    const end = points[points.length - 1].t;
+    const start = end - windowMs;
+    return points.filter((p) => p.t >= start);
+  }, [points, windowMs]);
 
-  const ctx=canvas.getContext("2d")!;
-  const w=canvas.width;
-  const h=canvas.height;
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
-  ctx.clearRect(0,0,w,h);
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
 
-  const mid=h/2;
+    const mid = h / 2;
+    const centsToY = (c: number) => mid - c * 2; // scale
 
-  ctx.strokeStyle="#444";
-  ctx.beginPath();
-  ctx.moveTo(0,mid);
-  ctx.lineTo(w,mid);
-  ctx.stroke();
+    // guide bands (+/- 5, 15, 30 cents)
+    const bands = [5, 15, 30];
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(255,255,255,0.10)";
+    for (const b of bands) {
+      ctx.beginPath();
+      ctx.moveTo(0, centsToY(b));
+      ctx.lineTo(w, centsToY(b));
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, centsToY(-b));
+      ctx.lineTo(w, centsToY(-b));
+      ctx.stroke();
+    }
 
-  ctx.strokeStyle="#00ffd5";
-  ctx.beginPath();
+    // target line (0 cents)
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "rgba(255,255,255,0.18)";
+    ctx.beginPath();
+    ctx.moveTo(0, mid);
+    ctx.lineTo(w, mid);
+    ctx.stroke();
 
-  points.forEach((p,i)=>{
-    const x=(i/points.length)*w;
-    const y=mid-p.cents*2;
+    if (normalized.length < 2) return;
 
-    if(i===0)ctx.moveTo(x,y);
-    else ctx.lineTo(x,y);
-  });
+    const endT = normalized[normalized.length - 1].t;
+    const startT = endT - windowMs;
+    const xForT = (t: number) => ((t - startT) / windowMs) * w;
 
-  ctx.stroke();
- },[points]);
+    const colorFor = (g: PitchGrade) => {
+      switch (g) {
+        case "perfect":
+          return "rgba(255,215,0,0.95)"; // gold
+        case "great":
+          return "rgba(0,255,213,0.95)"; // teal
+        case "good":
+          return "rgba(135,206,235,0.95)"; // sky
+        default:
+          return "rgba(255,99,71,0.90)"; // tomato
+      }
+    };
 
- return(
-  <canvas
-    ref={canvasRef}
-    width={600}
-    height={200}
-    className="pitchRoad"
-  />
- );
+    // draw colored segments
+    ctx.lineWidth = 4;
+    ctx.lineCap = "round";
+    for (let i = 1; i < normalized.length; i++) {
+      const a = normalized[i - 1];
+      const b = normalized[i];
+      const x1 = xForT(a.t);
+      const y1 = centsToY(a.cents);
+      const x2 = xForT(b.t);
+      const y2 = centsToY(b.cents);
+      ctx.strokeStyle = colorFor(b.grade);
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    }
+  }, [normalized, windowMs]);
+
+  return (
+    <div className="pitchRoadWrap">
+      <canvas ref={canvasRef} className="pitchRoad" width={720} height={220} />
+      <div className="pitchRoadLegend" aria-hidden>
+        <span>⭐ perfect</span>
+        <span>✨ great</span>
+        <span>👍 good</span>
+        <span>• bad</span>
+      </div>
+    </div>
+  );
 }

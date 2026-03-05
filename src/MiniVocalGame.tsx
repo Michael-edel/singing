@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AccuracyRing } from './components/AccuracyRing';
 import { PitchRingSmule } from './components/PitchRingSmule';
 import { ScoreMeter } from './components/ScoreMeter';
+import PitchRoad, { type PitchGrade, type PitchPoint } from './components/PitchRoad';
 import { useI18n } from './i18n';
 
 const TOTAL_ROUNDS = 5;
@@ -36,6 +37,31 @@ type LeaderRecord = {
   id: string;
   score: number;
 };
+
+function gradeFromAbsCents(absCents: number): PitchGrade {
+  if (absCents < 5) return 'perfect';
+  if (absCents < 15) return 'great';
+  if (absCents < 30) return 'good';
+  return 'bad';
+}
+
+function starsFromAbsCents(absCents: number): number {
+  const g = gradeFromAbsCents(absCents);
+  switch (g) {
+    case 'perfect': return 5;
+    case 'great': return 4;
+    case 'good': return 3;
+    default: return 2;
+  }
+}
+
+function starsFromScore(score: number): number {
+  if (score >= 95) return 5;
+  if (score >= 85) return 4;
+  if (score >= 70) return 3;
+  if (score >= 50) return 2;
+  return 1;
+}
 
 const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -205,6 +231,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
   const smoothHzRef = useRef<number | null>(null);
+  const audioBufferRef = useRef<Float32Array<ArrayBuffer> | null>(null);
 
   const calibCollectedRef = useRef<number[]>([]);
   const calibStartRef = useRef<number>(0);
@@ -213,6 +240,11 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
   const silenceStartRef = useRef<number>(0);
   const centsSamplesRef = useRef<number[]>([]);
   const totalSilentMsRef = useRef<number>(0);
+
+  // V15: pitch trace for Smule-style road
+  const tracePointsRef = useRef<PitchPoint[]>([]);
+  const [pitchRoadPoints, setPitchRoadPoints] = useState<PitchPoint[]>([]);
+  const lastRoadTickRef = useRef<number>(0);
 
   useEffect(() => {
     const h = localStorage.getItem(HISTORY_KEY);
@@ -244,10 +276,12 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
 
     const tick = () => {
       if (!analyserRef.current || !audioCtxRef.current) return;
-      const buffer = new Float32Array(analyserRef.current.fftSize);
+      if (!audioBufferRef.current || audioBufferRef.current.length !== analyserRef.current.fftSize) {
+        audioBufferRef.current = new Float32Array(analyserRef.current.fftSize) as unknown as Float32Array<ArrayBuffer>;
+      }
+      const buffer = audioBufferRef.current;
       analyserRef.current.getFloatTimeDomainData(buffer);
       const rms = rmsFromBuffer(buffer);
-        const p = pitch;
       const yin = rms >= 0.01 ? yinPitch(buffer, audioCtxRef.current.sampleRate) : null;
       setConfidence(yin ? yin.probability : 0);
 
@@ -262,6 +296,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
 
       setPitch(hz);
       setVolume(rms);
+      const p = hz;
 
       if (stage === 'calibration') {
         if (p > 0) calibCollectedRef.current.push(p);
@@ -280,6 +315,22 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
         } else {
           silenceStartRef.current = 0;
           centsSamplesRef.current.push(hzToCentsDiff(p, targetFreq));
+
+          // V15: pitch trace points (throttled UI updates)
+          if (yin && yin.probability >= 0.8) {
+            const cents = hzToCentsDiff(p, targetFreq);
+            const grade = gradeFromAbsCents(Math.abs(cents));
+            tracePointsRef.current.push({ t: Date.now(), cents, grade });
+            // keep last ~8s to avoid growth
+            const cutoff = Date.now() - 8000;
+            if (tracePointsRef.current.length > 500) {
+              tracePointsRef.current = tracePointsRef.current.filter((pt) => pt.t >= cutoff);
+            }
+            if (now - (lastRoadTickRef.current || 0) > 120) {
+              lastRoadTickRef.current = now;
+              setPitchRoadPoints([...tracePointsRef.current]);
+            }
+          }
         // PRO: live score & ring accuracy (update ~10fps)
         const centsErr = Math.abs(hzToCentsDiff(p, targetFreq));
         const accuracy = clamp(1 - centsErr / 100, 0, 1);
@@ -354,6 +405,8 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
     setHolding(false);
     setAutoPaused(false);
     setPauseMsg('');
+    tracePointsRef.current = [];
+    setPitchRoadPoints([]);
   };
 
   const startHold = () => {
@@ -366,6 +419,8 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
     silenceStartRef.current = 0;
     centsSamplesRef.current = [];
     totalSilentMsRef.current = 0;
+    tracePointsRef.current = [];
+    setPitchRoadPoints([]);
   };
 
   const finishRound = () => {
@@ -571,7 +626,7 @@ const shareToStories = async () => {
       <div className="v5Backdrop" aria-hidden />
       <div className="v5Card v6GameCard">
       <h1>MiniVocalGame — вокальный челлендж</h1>
-      <p className="muted">Ограничение Instagram: авто‑публикация сторис со стикерами ограничена. Используйте Share Sheet + добавьте стикеры вручную.</p>
+
 
       {stage === 'setup' && (
         <section className="v6Section">
@@ -610,7 +665,7 @@ const shareToStories = async () => {
               <div className="hudRow">
                 <div className="badge">{t('hud.live')}: <strong>{Math.round(pitch) || 0} Hz</strong></div>
                 <div className="badge">{t('hud.target')}: <strong>{freqToNote(targetFreq)}</strong></div>
-                <div className="badge">{t('hud.delta')} <strong>{Math.round(liveCents)}</strong> {t('pitch.cents')}</div>
+                <div className="badge">⭐ <strong>{'⭐'.repeat(starsFromAbsCents(Math.abs(liveCents || 0)))}</strong></div>
               </div>
 
               <ScoreMeter value={liveScore} max={100} label={t('hud.liveScore')} />
@@ -621,6 +676,9 @@ const shareToStories = async () => {
               </div>
             </div>
           </div>
+
+          <PitchRoad points={pitchRoadPoints} />
+
           <p>{volumeHint}</p>
           {autoPaused ? (
             <>
@@ -645,9 +703,10 @@ const shareToStories = async () => {
         <section className="v6Section">
           <h2>Результаты</h2>
           <p>Итоговый счёт: <strong>{finalScore}</strong></p>
+          <p>Награда: <strong>{'⭐'.repeat(starsFromScore(finalScore))}</strong></p>
           <p>Уровень: <strong>{level}</strong></p>
           <p>{offer}</p>
-          <p>🎁 Reveal-приз: напишите «ХОЧУ ПРИЗ» в DM и получите бонус-упражнение.</p>
+          <p>🎁 Приз: напишите «ХОЧУ ПРИЗ» в DM и получите бонус-упражнение.</p>
           <p>Авто-DM сценарий: «Привет! Прошёл челлендж, хочу разбор голоса и план занятий».</p>
 
           <label>
