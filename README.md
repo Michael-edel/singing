@@ -184,3 +184,45 @@ If you like the project:
 ⭐ Star the repository  
 🎤 Share the vocal challenge  
 🚀 Contribute improvements
+
+
+## V9 Auth + Leaderboard (Google/Apple)
+
+### 1) Set Vite env vars (frontend)
+
+Create `.env`:
+
+- `VITE_GOOGLE_CLIENT_ID=...`
+- `VITE_APPLE_CLIENT_ID=...` (Apple Service ID)
+- `VITE_APPLE_REDIRECT_URI=https://YOUR_DOMAIN` (must match Apple config)
+
+### 2) Configure Worker env vars (backend)
+
+In `wrangler.toml` set:
+
+- `SESSION_SECRET` (long random)
+- `GOOGLE_CLIENT_ID`
+- `APPLE_CLIENT_ID`
+
+### 3) D1 database
+
+Create D1 and set `database_id` in `wrangler.toml`, then run migrations:
+
+```bash
+npx wrangler d1 migrations apply singing-db --local
+npx wrangler d1 migrations apply singing-db
+```
+
+### 4) Deploy
+
+```bash
+npm run build
+npx wrangler deploy
+```
+
+API:
+- `POST /api/login/google`
+- `POST /api/login/apple`
+- `GET /api/me`
+- `POST /api/score`
+- `GET /api/leaderboard`

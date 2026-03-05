@@ -143,6 +143,7 @@ function yinPitch(
   if (denom !== 0) betterTau = tauEstimate + (s2 - s0) / (2 * denom);
 
   const hz = sampleRate / betterTau;
+        const p = hz; // alias used by calibration/game logic
   const probability = clamp(1 - cmndf[tauEstimate], 0, 1);
 
   if (!Number.isFinite(hz) || hz <= 0) return null;
@@ -170,7 +171,7 @@ function levelFromScore(score: number): string {
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
-export default function MiniVocalGame() {
+export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onSubmitScore?: (p: { score: number; accuracy: number }) => void }) {
   const [stage, setStage] = useState<Stage>('setup');
   const [difficulty, setDifficulty] = useState<Difficulty>('newbie');
   const [calibStep, setCalibStep] = useState<CalibStep>('low');
@@ -244,6 +245,7 @@ export default function MiniVocalGame() {
       const buffer = new Float32Array(analyserRef.current.fftSize);
       analyserRef.current.getFloatTimeDomainData(buffer);
       const rms = rmsFromBuffer(buffer);
+        const p = pitch;
       const yin = rms >= 0.01 ? yinPitch(buffer, audioCtxRef.current.sampleRate) : null;
       setConfidence(yin ? yin.probability : 0);
 
@@ -256,7 +258,6 @@ export default function MiniVocalGame() {
         smoothHzRef.current = null;
       }
 
-      const p = hz;
       setPitch(hz);
       setVolume(rms);
 
@@ -440,6 +441,21 @@ export default function MiniVocalGame() {
     if (!results.length) return 0;
     return Math.round(results.reduce((a, r) => a + r.score, 0) / results.length);
   }, [results]);
+
+  const finalAccuracy = useMemo(() => {
+    if (!results.length) return 0;
+    const meanErr = results.reduce((a, r) => a + Math.abs(r.avgCentsError), 0) / results.length;
+    return Math.max(0, Math.min(1, 1 - meanErr / 50));
+  }, [results]);
+
+  const submittedRef = useRef(false);
+  useEffect(() => {
+    if (stage !== 'results') return;
+    if (!onSubmitScore) return;
+    if (submittedRef.current) return;
+    submittedRef.current = true;
+    onSubmitScore({ score: Math.round(finalScore), accuracy: finalAccuracy });
+  }, [stage, onSubmitScore, finalScore, finalAccuracy]);
   const level = levelFromScore(finalScore);
 
   const volumeHint = volume < 0.012 ? 'Слишком тихо' : volume > 0.11 ? 'Слишком громко' : 'Нормальный уровень';

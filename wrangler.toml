@@ -6,3 +6,14 @@ compatibility_date = "2026-03-04"
 directory = "./dist"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
+
+
+[[d1_databases]]
+binding = "DB"
+database_name = "singing-db"
+database_id = "cb83215c-f225-450a-bb6c-fd4141024d45"
+
+[vars]
+SESSION_SECRET = "CHANGE_ME_LONG_RANDOM"
+GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID"
+APPLE_CLIENT_ID = "YOUR_APPLE_SERVICE_ID"
