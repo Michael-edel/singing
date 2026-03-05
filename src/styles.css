@@ -1116,3 +1116,33 @@ ul, ol { margin-top: 0; }
   background: rgba(255,255,255,0.06);
 }
 .badge.btn:hover{ background: rgba(255,255,255,0.10); }
+
+
+/* --- V24 iPhone fit fixes --- */
+:root{
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (max-width: 520px){
+  .v5Shell{
+    min-height: 100dvh;
+    align-items: flex-start;
+    justify-content: center;
+    padding: calc(12px + var(--safe-top)) 12px calc(12px + var(--safe-bottom));
+    overflow-y: auto;
+  }
+  .v5Card{
+    padding: 16px 14px 14px;
+    max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .v6GameCard{
+    width: 100%;
+  }
+  h1{
+    font-size: 40px;
+    line-height: 1.05;
+  }
+}

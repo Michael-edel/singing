@@ -147,7 +147,13 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
   const [roundIndex, setRoundIndex] = useState(0);
   const [targetFreq, setTargetFreq] = useState(220);
   const liveCents = useMemo(() => (pitch > 0 && targetFreq > 0 ? hzToCentsDiff(pitch, targetFreq) : 0), [pitch, targetFreq]);
-  const [holding, setHolding] = useState(false);
+    const liveStars = useMemo(() => {
+    // Start from 0 stars until we have a confident voiced pitch
+    if (pitch <= 0 || confidence < 0.6) return 0;
+    return starsFromAbsCents(Math.abs(liveCents || 0));
+  }, [pitch, confidence, liveCents]);
+
+const [holding, setHolding] = useState(false);
   const [autoPaused, setAutoPaused] = useState(false);
   const [pauseMsg, setPauseMsg] = useState('');
   const [results, setResults] = useState<RoundResult[]>([]);
@@ -292,6 +298,22 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
       setVolume(rms);
       const p = hz;
 
+      // V24: keep PitchRoad alive even before holding (Smule-style live trace)
+      if (stage === 'game' && !autoPaused && res && res.probability >= 0.6 && p > 0) {
+        const now = performance.now();
+        const cents = hzToCentsDiff(p, targetFreq);
+        const grade = gradeFromAbsCents(Math.abs(cents));
+        tracePointsRef.current.push({ t: Date.now(), cents, grade });
+        const cutoff = Date.now() - 8000;
+        if (tracePointsRef.current.length > 500) {
+          tracePointsRef.current = tracePointsRef.current.filter((pt) => pt.t >= cutoff);
+        }
+        if (now - (lastRoadTickRef.current || 0) > 120) {
+          lastRoadTickRef.current = now;
+          setPitchRoadPoints([...tracePointsRef.current]);
+        }
+      }
+
       if (stage === 'calibration') {
         if (p > 0) calibCollectedRef.current.push(p);
       }
@@ -299,6 +321,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
       if (stage === 'game' && holding && !autoPaused) {
         const now = performance.now();
         const silent = rms < 0.012 || p <= 0;
+
         if (silent) {
           if (!silenceStartRef.current) silenceStartRef.current = now;
           if (now - silenceStartRef.current > SILENCE_AUTOPAUSE_MS) {
@@ -309,22 +332,8 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
         } else {
           silenceStartRef.current = 0;
           centsSamplesRef.current.push(hzToCentsDiff(p, targetFreq));
+        }
 
-          // V15: pitch trace points (throttled UI updates)
-          if (res && res.probability >= 0.6) {
-            const cents = hzToCentsDiff(p, targetFreq);
-            const grade = gradeFromAbsCents(Math.abs(cents));
-            tracePointsRef.current.push({ t: Date.now(), cents, grade });
-            // keep last ~8s to avoid growth
-            const cutoff = Date.now() - 8000;
-            if (tracePointsRef.current.length > 500) {
-              tracePointsRef.current = tracePointsRef.current.filter((pt) => pt.t >= cutoff);
-            }
-            if (now - (lastRoadTickRef.current || 0) > 120) {
-              lastRoadTickRef.current = now;
-              setPitchRoadPoints([...tracePointsRef.current]);
-            }
-          }
         // V21: live accuracy + hold progress (update ~10fps)
         const centsErr = Math.abs(hzToCentsDiff(p, targetFreq));
         const accuracyPct = clamp(100 - centsErr * 2, 0, 100);
@@ -339,13 +348,10 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
           setHoldProgress(progress);
         }
 
-        }
-
         if (now - holdStartRef.current >= ROUND_MS) {
           finishRound();
         }
       }
-
       rafRef.current = requestAnimationFrame(tick);
     };
 
@@ -771,7 +777,7 @@ const shareToStories = async () => {
                 <div className="badge">{t('hud.live')}: <strong>{Math.round(pitch) || 0} Hz</strong></div>
                 <div className="badge">{t('hud.target')}: <strong>{freqToNote(targetFreq)}</strong></div>
                 <button className="badge btn" onClick={playReferenceTone} title={t('hud.playTone')}>🔊 {t('hud.playTone')}</button>
-                <div className="badge">⭐ <strong>{'⭐'.repeat(starsFromAbsCents(Math.abs(liveCents || 0)))}</strong></div>
+                <div className="badge">⭐ <strong>{'⭐'.repeat(liveStars)}{'☆'.repeat(Math.max(0, 5 - liveStars))}</strong></div>
               </div>
 
               {holding ? (
