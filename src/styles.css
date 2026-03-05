@@ -1,6 +1,6 @@
-html, body { overflow-x: hidden; }
 html, body {
   height: 100%;
+  overflow-x: hidden;
 }
 
 body {
@@ -822,32 +822,11 @@ ul, ol { margin-top: 0; }
   backdrop-filter: blur(12px);
 }
 
-.menuHero{
-  position: relative;
+.menuCover{
   width: 100%;
-  height: 168px;
   border-radius: 18px;
-  overflow: hidden;
   border: 1px solid rgba(255,255,255,0.08);
 }
-.menuHeroImg{
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: 50% 40%;
-  filter: saturate(0.85) contrast(1.05) brightness(0.92);
-  transform: scale(1.02);
-}
-.menuHeroOverlay{
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg,
-    rgba(0,0,0,0.15) 0%,
-    rgba(0,0,0,0.55) 70%,
-    rgba(0,0,0,0.75) 100%);
-}
-
-
 
 .menuHead{
   padding: 12px 8px 6px;
@@ -900,129 +879,184 @@ ul, ol { margin-top: 0; }
 }
 
 
-/* ===== V18 Clean UI ===== */
-html, body { overflow-x: hidden; }
-
-.splashShell, .menuShell {
+/* ===== V19 PRO HOME ===== */
+.homeShell{
   position: relative;
-  min-height: calc(100vh - 24px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px 14px 48px;
+  padding: 28px 14px 22px;
+  display:flex;
+  justify-content:center;
 }
-
-.splashBackdrop, .menuBackdrop {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(900px 520px at 50% 35%, rgba(130,120,255,0.18), transparent 60%),
-    radial-gradient(900px 600px at 70% 55%, rgba(80,200,255,0.10), transparent 62%);
-}
-
-.introOverlay {
+.homeBackdrop{
   position: fixed;
   inset: 0;
-  padding: 0;
-  border: 0;
-  background: #000;
-  z-index: 50;
+  pointer-events:none;
 }
-
-.introVideo {
+.homeCard{
+  width: min(560px, 100%);
+  border-radius: 22px;
+  padding: 18px 18px 20px;
+  background: rgba(18,18,28,0.55);
+  border: 1px solid rgba(255,255,255,0.10);
+  box-shadow: 0 16px 70px rgba(0,0,0,0.45);
+  backdrop-filter: blur(14px);
+}
+.homeHero{
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  height: 160px;
+  margin-bottom: 14px;
+}
+.homeHeroImg{
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transform: scale(1.06);
+  filter: contrast(1.05) saturate(1.05);
 }
-
-.splashCard {
-  position: relative;
-  z-index: 2;
-  width: min(520px, 94vw);
-  background: rgba(18, 18, 28, 0.68);
-  border: 1px solid rgba(255,255,255,0.10);
-  border-radius: 18px;
-  padding: 18px 16px;
-  display: flex;
+.homeHeroOverlay{
+  position:absolute;
+  inset:0;
+  background: linear-gradient(180deg, rgba(0,0,0,0.05), rgba(0,0,0,0.62));
+}
+.homeHead{
+  text-align:center;
+  padding: 2px 4px 10px;
+}
+.homeKicker{
+  font-size: 11px;
+  letter-spacing: 2.2px;
+  opacity: 0.72;
+  text-transform: uppercase;
+}
+.homeTitle{
+  margin: 6px 0 2px;
+  font-size: 28px;
+  font-weight: 700;
+}
+.homeSub{
+  opacity: 0.78;
+  font-size: 14px;
+}
+.homeActions{
+  display:flex;
+  flex-direction: column;
+  gap: 12px;
   align-items: center;
-  gap: 14px;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 18px 60px rgba(0,0,0,0.40);
+  padding-top: 6px;
 }
-
-.splashMark {
-  width: 56px;
-  height: 56px;
+.homePrimary{
+  width: 100%;
+  font-size: 18px;
+  padding: 14px 16px;
+}
+.homeLink{
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.92);
+  padding: 10px 14px;
   border-radius: 14px;
-  object-fit: cover;
-  border: 1px solid rgba(255,255,255,0.10);
+  width: 100%;
+  cursor:pointer;
+}
+.homeLink:hover{ border-color: rgba(255,255,255,0.22); }
+.homeTip{
+  font-size: 12px;
+  opacity: 0.65;
+  text-align:center;
 }
 
-.splashText { flex: 1; min-width: 0; }
-.splashTitle { font-size: 18px; font-weight: 700; letter-spacing: 0.2px; }
-.splashSubtitle { font-size: 13px; opacity: 0.75; margin-top: 2px; }
-
-.splashContinue {
-  padding: 10px 12px;
+/* ===== V19 GAME SETUP (inside MiniVocalGame) ===== */
+.homeGameSetup{
+  padding: 14px 6px 4px;
+  text-align:center;
+}
+.homeGameTitle{
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.homeGameSubtitle{
+  opacity: 0.75;
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+.homeGamePrimary{
+  display:flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.homeGameMicBtn{
+  width: 100%;
+  max-width: 420px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: linear-gradient(90deg, rgba(95,90,255,0.95), rgba(60,190,255,0.95));
+  color: white;
+  padding: 14px 16px;
+  cursor: pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap: 10px;
+  box-shadow: 0 14px 50px rgba(0,0,0,0.35);
+}
+.homeGameMicBtn:active{ transform: scale(0.99); }
+.homeGameMicIcon{ font-size: 20px; }
+.homeGameMicText{ font-size: 16px; font-weight: 650; }
+.homeGameHint{
+  font-size: 12px;
+  opacity: 0.7;
+  max-width: 440px;
+}
+.homeGameAdvancedToggle{
+  margin-top: 12px;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.92);
+  padding: 9px 12px;
+  border-radius: 14px;
+  cursor:pointer;
+}
+.homeGameAdvanced{
+  margin: 12px auto 0;
+  width: min(520px, 100%);
+  text-align:left;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.04);
+  border-radius: 16px;
+  padding: 12px;
+}
+.homeGameRow{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.homeGameRow select{
+  background: rgba(0,0,0,0.25);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.18);
   border-radius: 12px;
+  padding: 8px 10px;
+}
+.homeGameRowBtns{
+  display:flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.homeGameRowBtns button{
+  border-radius: 12px;
+  padding: 10px 12px;
   border: 1px solid rgba(255,255,255,0.14);
-  background: rgba(120, 140, 255, 0.18);
-  color: rgba(255,255,255,0.95);
+  background: rgba(0,0,0,0.18);
+  color: rgba(255,255,255,0.92);
+  cursor:pointer;
 }
-
-.menuCard {
-  position: relative;
-  z-index: 2;
-  width: min(560px, 94vw);
-  background: rgba(18, 18, 28, 0.62);
-  border: 1px solid rgba(255,255,255,0.10);
-  border-radius: 20px;
-  overflow: hidden;
-  backdrop-filter: blur(12px);
-  box-shadow: 0 18px 70px rgba(0,0,0,0.42);
+.homeGameFinePrint{
+  margin-top: 10px;
+  font-size: 12px;
+  opacity: 0.65;
 }
-
-.menuHero {
-  position: relative;
-  height: 150px;
-  overflow: hidden;
-}
-
-.menuHeroImg {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  filter: saturate(0.95) contrast(1.05);
-  transform: scale(1.04);
-}
-
-.menuHeroOverlay {
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(180deg, rgba(0,0,0,0.18), rgba(0,0,0,0.62)),
-    radial-gradient(500px 200px at 30% 40%, rgba(120,160,255,0.20), transparent 60%);
-}
-
-.menuHead { padding: 14px 16px 2px; text-align: center; }
-.menuKicker { font-size: 11px; letter-spacing: 0.22em; opacity: 0.65; text-transform: uppercase; }
-.menuTitle { margin: 6px 0 0; font-size: 22px; font-weight: 800; }
-.menuSub { margin-top: 6px; font-size: 13px; opacity: 0.72; }
-
-.menuButtons { padding: 14px 16px 10px; display: grid; gap: 10px; }
-.menuPrimary, .menuSecondary {
-  width: 100%;
-  padding: 12px 14px;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,0.14);
-  color: rgba(255,255,255,0.95);
-  background: rgba(120, 140, 255, 0.20);
-}
-.menuSecondary { background: rgba(255,255,255,0.06); }
-
-.menuTip { padding: 10px 16px 16px; text-align: center; font-size: 12px; opacity: 0.62; }
-
-/* Ensure app shell doesn't create horizontal overflow */
-.appShell { width: 100%; overflow-x: hidden; }
-.topArea, .bottomArea { width: min(920px, 100%); margin: 0 auto; padding: 0 14px; }

@@ -206,6 +206,8 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
   const [calibLeftMs, setCalibLeftMs] = useState(CALIBRATION_MS);
   const [range, setRange] = useState<{ low: number; high: number }>({ low: 165, high: 440 });
   const [micReady, setMicReady] = useState(false);
+  const [showAdvancedSetup, setShowAdvancedSetup] = useState(false);
+
   const [pitch, setPitch] = useState(0);
   const [confidence, setConfidence] = useState(0);
   const [volume, setVolume] = useState(0);
@@ -353,6 +355,14 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
 
     tick();
     setMicReady(true);
+  };
+
+  const startGameFromSetup = async () => {
+    if (!micReady) {
+      await connectMic();
+    }
+    setStage('game');
+    prepareRound(0);
   };
 
   const beginCalibration = () => {
@@ -629,17 +639,56 @@ const shareToStories = async () => {
 
 
       {stage === 'setup' && (
-        <section className="v6Section">
-          <h2>Настройка</h2>
-          <label>
-            Сложность:
-            <select value={difficulty} onChange={(e) => setDifficulty(e.target.value as Difficulty)}>
-              <option value="newbie">Новичок</option>
-              <option value="pro">Профи</option>
-            </select>
-          </label>
-          <button onClick={connectMic} disabled={micReady}>{micReady ? 'Микрофон подключён' : 'Подключить микрофон'}</button>
-          <button onClick={beginCalibration} disabled={!micReady}>Начать калибровку</button>
+        <section className="homeGameSetup">
+          <div className="homeGameTitle">🎤 MiniVocalGame</div>
+          <div className="homeGameSubtitle">Пой в ноту. Получай ⭐. Делись результатом.</div>
+
+          <div className="homeGamePrimary">
+            <button
+              className="homeGameMicBtn"
+              type="button"
+              onClick={() => startGameFromSetup()}
+            >
+              <span className="homeGameMicIcon">🎙️</span>
+              <span className="homeGameMicText">{micReady ? "Начать игру" : "Включить микрофон"}</span>
+            </button>
+            <div className="homeGameHint">
+              {micReady ? "Готово! Нажмите, чтобы начать." : "При первом запуске нужно разрешить доступ к микрофону."}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="homeGameAdvancedToggle"
+            onClick={() => setShowAdvancedSetup((v) => !v)}
+          >
+            {showAdvancedSetup ? "Скрыть настройки" : "Настройки"}
+          </button>
+
+          {showAdvancedSetup ? (
+            <div className="homeGameAdvanced">
+              <label className="homeGameRow">
+                <span>Сложность</span>
+                <select value={difficulty} onChange={(e) => setDifficulty(e.target.value as Difficulty)}>
+                  <option value="newbie">Новичок</option>
+                  <option value="pro">Профи</option>
+                </select>
+              </label>
+
+              <div className="homeGameRowBtns">
+                <button onClick={connectMic} disabled={micReady} type="button">
+                  {micReady ? "Микрофон подключён" : "Подключить микрофон"}
+                </button>
+                <button onClick={beginCalibration} disabled={!micReady} type="button">
+                  Калибровка диапазона
+                </button>
+              </div>
+
+              <div className="homeGameFinePrint">
+                Калибровка улучшает подбор нот под ваш голос.
+              </div>
+            </div>
+          ) : null}
         </section>
       )}
 
