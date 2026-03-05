@@ -717,7 +717,14 @@ const shareToStories = async () => {
                 <div className="badge">⭐ <strong>{'⭐'.repeat(starsFromAbsCents(Math.abs(liveCents || 0)))}</strong></div>
               </div>
 
-              <ScoreMeter value={liveScore} max={100} label={t('hud.liveScore')} />
+              {!holding ? (
+                <div className="hintCard">
+                  <div className="hintTitle">{t("hint.title")} <strong>{freqToNote(targetFreq)}</strong></div>
+                  <div className="hintBody">{t("hint.body")}</div>
+                </div>
+              ) : (
+                <ScoreMeter value={liveScore} max={100} label={t("hud.accuracy")} />
+              )}
 
               <div className="hudRow">
                 <div className="badge subtle">{t('hud.streak')}: <strong>{streak}</strong></div>

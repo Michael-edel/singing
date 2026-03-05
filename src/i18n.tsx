@@ -50,6 +50,9 @@ const DICTS: Record<Lang, Dict> = {
     "hud.liveScore": "Текущий score",
     "hud.streak": "Серия",
     "hud.confidence": "Уверенность",
+    "hud.accuracy": "Точность",
+    "hint.title": "🎯 Пойте ноту",
+    "hint.body": "Нажмите и удерживайте кнопку «Удерживать ноту» и держите звук ~2 секунды. Очки появляются во время удержания.",
 
     // Components
     "pitch.cents": "центов",
@@ -101,6 +104,9 @@ const DICTS: Record<Lang, Dict> = {
     "hud.liveScore": "Live score",
     "hud.streak": "Streak",
     "hud.confidence": "Confidence",
+    "hud.accuracy": "Accuracy",
+    "hint.title": "🎯 Sing note",
+    "hint.body": "Press and hold “Hold note” and sustain the sound for ~2 seconds. Points appear while holding.",
 
     "pitch.cents": "cents",
     "pitch.nice": "Nice!",
