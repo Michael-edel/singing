@@ -6,40 +6,6 @@
 
 const encoder = new TextEncoder();
 
-const startOfDayUTC = (ms) => {
-  const d = new Date(ms);
-  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
-};
-
-const startOfWeekUTC = (ms) => {
-  const d = new Date(ms);
-  const day = d.getUTCDay(); // 0..6 (Sun..Sat)
-  const diff = (day + 6) % 7; // Monday=0
-  const sod = startOfDayUTC(ms);
-  return sod - diff * 86400000;
-};
-
-const DAILY_NOTES = ['C4','D4','E4','F4','G4','A4','B4'];
-const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
-const midiToFreq = (m) => 440 * Math.pow(2, (m - 69) / 12);
-const noteToFreq = (note) => {
-  const m = /^([A-G])(#?)(\d)$/.exec(note);
-  if (!m) return 440;
-  const base = m[1];
-  const sharp = m[2] === '#';
-  const octave = Number(m[3]);
-  const name = base + (sharp ? '#' : '');
-  const idx = NOTE_NAMES.indexOf(name);
-  const midi = (octave + 1) * 12 + idx;
-  return midiToFreq(midi);
-};
-const dailyNoteForISO = (iso) => {
-  let hash = 0;
-  for (let i = 0; i < iso.length; i++) hash = (hash * 31 + iso.charCodeAt(i)) >>> 0;
-  return DAILY_NOTES[hash % DAILY_NOTES.length];
-};
-
-
 function base64url(bytes) {
   let str = btoa(String.fromCharCode(...bytes));
   return str.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
@@ -279,28 +245,11 @@ export default {
       return json({ ok: true });
     }
 
-    
-    if (path === "/api/daily-note" && request.method === "GET") {
-      const today = new Date().toISOString().slice(0, 10);
-      const note = dailyNoteForISO(today);
-      const freq = noteToFreq(note);
-      return json({ date: today, note, freq });
-    }
-
-if (path === "/api/leaderboard" && request.method === "GET") {
-      const url = new URL(request.url);
-      const scope = (url.searchParams.get("scope") || "global").toLowerCase();
-      const now = Date.now();
-
-      let since = 0;
-      if (scope === "daily" || scope === "today") since = startOfDayUTC(now);
-      else if (scope === "week" || scope === "weekly") since = startOfWeekUTC(now);
-
+    if (path === "/api/leaderboard" && request.method === "GET") {
       const res = await env.DB.prepare(
         `WITH best AS (
           SELECT user_id, MAX(score) AS best_score, MAX(created_at) AS last_played_at
           FROM scores
-          WHERE created_at >= ?1
           GROUP BY user_id
         )
         SELECT u.id as user_id, u.name, u.avatar, b.best_score, b.last_played_at
@@ -308,10 +257,9 @@ if (path === "/api/leaderboard" && request.method === "GET") {
         JOIN users u ON u.id = b.user_id
         ORDER BY b.best_score DESC
         LIMIT 50`
-      ).bind(since).all();
-
-      const rows = (res.results || []).map((r, i) => ({ rank: i + 1, ...r }));
-      return json({ rows, scope, since });
+      ).all();
+      const rows = (res.results || []).map((r, i) => ({ rank: i+1, ...r }));
+      return json({ rows });
     }
 
     // Static assets (SPA)

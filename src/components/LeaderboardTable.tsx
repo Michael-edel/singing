@@ -13,7 +13,6 @@ export type LeaderRow = {
 export function LeaderboardTable({ currentUserId }: { currentUserId?: string | null }) {
   const { t } = useI18n();
   const [rows, setRows] = useState<LeaderRow[]>([]);
-  const [scope, setScope] = useState<'global' | 'daily' | 'week'>('global');
   const [loading, setLoading] = useState(true);
 
   async function load() {
@@ -32,21 +31,10 @@ export function LeaderboardTable({ currentUserId }: { currentUserId?: string | n
     const id = window.setInterval(load, 15000);
     return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scope]);
+  }, []);
 
   return (
     <div className="leaderboardCard">
-      <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
-        <button className={scope === 'global' ? 'v6BtnActive' : 'v6Btn'} onClick={() => setScope('global')}>
-          Global
-        </button>
-        <button className={scope === 'daily' ? 'v6BtnActive' : 'v6Btn'} onClick={() => setScope('daily')}>
-          Today
-        </button>
-        <button className={scope === 'week' ? 'v6BtnActive' : 'v6Btn'} onClick={() => setScope('week')}>
-          This week
-        </button>
-      </div>
       <div className="leaderboardHeader">
         <div className="leaderboardTitle">{t("lb.title")}</div>
         <button className="pillBtn subtle" onClick={load} disabled={loading}>

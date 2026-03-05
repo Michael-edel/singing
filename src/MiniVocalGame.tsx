@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AccuracyRing } from './components/AccuracyRing';
 import { PitchRingSmule } from './components/PitchRingSmule';
-import { PitchTimeline, type TimelinePoint } from './components/PitchTimeline';
 import { ScoreMeter } from './components/ScoreMeter';
 import { useI18n } from './i18n';
 
@@ -19,20 +18,12 @@ type Difficulty = 'newbie' | 'pro';
 type CalibStep = 'low' | 'high' | 'done';
 type CardStyle = 'minimal' | 'neon' | 'karaoke';
 
-type GameMode = 'classic' | 'daily';
-
-const DAILY_NOTES = ['C4','D4','E4','F4','G4','A4','B4'];
-
-
 type RoundResult = {
   targetFreq: number;
   avgCentsError: number;
   instabilityPenalty: number;
   silencePenalty: number;
   score: number;
-  grade: 'perfect' | 'great' | 'good' | 'bad';
-  comboBonus: number;
-  combo: number;
 };
 
 type HistoryRecord = {
@@ -44,21 +35,11 @@ type HistoryRecord = {
 type LeaderRecord = {
   id: string;
   score: number;
-  grade: 'perfect' | 'great' | 'good' | 'bad';
-  comboBonus: number;
-  combo: number;
 };
 
 const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
-
-const gradeFromScore = (score: number): LeaderRecord['grade'] => {
-  if (score >= 95) return 'perfect';
-  if (score >= 85) return 'great';
-  if (score >= 70) return 'good';
-  return 'bad';
-};
 
 
 function getCachedMicStream(): MediaStream | null {
@@ -189,53 +170,12 @@ function levelFromScore(score: number): string {
   return 'Новичок';
 }
 
-
-function scoreToStars(score: number): number {
-  if (score >= 95) return 5;
-  if (score >= 85) return 4;
-  if (score >= 70) return 3;
-  if (score >= 50) return 2;
-  return 1;
-}
-const freqToMidi = (freq: number) => 12 * Math.log2(freq / 440) + 69;
-const midiToFreq = (midi: number) => 440 * Math.pow(2, (midi - 69) / 12);
-
-const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const;
-
-const freqToNoteName = (freq: number) => {
-  const midi = Math.round(freqToMidi(freq));
-  const name = NOTE_NAMES[(midi % 12 + 12) % 12];
-  const octave = Math.floor(midi / 12) - 1;
-  return `${name}${octave}`;
-};
-
-const noteNameToFreq = (note: string) => {
-  const m = /^([A-G])(#?)(\d)$/.exec(note);
-  if (!m) return 440;
-  const base = m[1];
-  const sharp = m[2] === '#';
-  const octave = Number(m[3]);
-  const name = base + (sharp ? '#' : '');
-  const idx = NOTE_NAMES.indexOf(name as any);
-  const midi = (octave + 1) * 12 + idx;
-  return midiToFreq(midi);
-};
-
-const dailyNoteForDate = (isoDate: string) => {
-  // deterministic "daily challenge" note
-  let hash = 0;
-  for (let i = 0; i < isoDate.length; i++) hash = (hash * 31 + isoDate.charCodeAt(i)) >>> 0;
-  return DAILY_NOTES[hash % DAILY_NOTES.length];
-};
-
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
 export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onSubmitScore?: (p: { score: number; accuracy: number }) => void }) {
   const { t } = useI18n();
   const [stage, setStage] = useState<Stage>('setup');
   const [difficulty, setDifficulty] = useState<Difficulty>('newbie');
-  const [mode, setMode] = useState<GameMode>('classic');
-  const [dailyNote, setDailyNote] = useState<string>(() => dailyNoteForDate(todayISO()));
   const [calibStep, setCalibStep] = useState<CalibStep>('low');
   const [calibLeftMs, setCalibLeftMs] = useState(CALIBRATION_MS);
   const [range, setRange] = useState<{ low: number; high: number }>({ low: 165, high: 440 });
@@ -243,10 +183,6 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
   const [pitch, setPitch] = useState(0);
   const [confidence, setConfidence] = useState(0);
   const [volume, setVolume] = useState(0);
-  const [timelinePoints, setTimelinePoints] = useState<TimelinePoint[]>([]);
-  const timelineRef = useRef<TimelinePoint[]>([]);
-  const lastTimelineTickRef = useRef(0);
-
   const [roundIndex, setRoundIndex] = useState(0);
   const [targetFreq, setTargetFreq] = useState(220);
   const liveCents = useMemo(() => (pitch > 0 && targetFreq > 0 ? hzToCentsDiff(pitch, targetFreq) : 0), [pitch, targetFreq]);
@@ -260,19 +196,11 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
   const [cardStyle, setCardStyle] = useState<CardStyle>('minimal');
   const [template, setTemplate] = useState<'template_a' | 'template_b'>('template_a');
   const [liveScore, setLiveScore] = useState(0);
-  const [combo, setCombo] = useState(0);
-  const [perfectStreak, setPerfectStreak] = useState(0);
-
   const liveScoreRef = useRef(0);
-  const comboRef = useRef(0);
-  const perfectStreakRef = useRef(0);
-
   const lastScoreTickRef = useRef(0);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
-  const audioBufferRef = useRef<Float32Array<ArrayBuffer> | null>(null);
-
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -316,10 +244,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
 
     const tick = () => {
       if (!analyserRef.current || !audioCtxRef.current) return;
-      if (!audioBufferRef.current || audioBufferRef.current.length !== analyserRef.current.fftSize) {
-        audioBufferRef.current = new Float32Array(analyserRef.current.fftSize) as unknown as Float32Array<ArrayBuffer>;
-      }
-      const buffer = audioBufferRef.current;
+      const buffer = new Float32Array(analyserRef.current.fftSize);
       analyserRef.current.getFloatTimeDomainData(buffer);
       const rms = rmsFromBuffer(buffer);
         const p = pitch;
@@ -327,7 +252,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
       setConfidence(yin ? yin.probability : 0);
 
       let hz = 0;
-      if (yin && yin.probability >= 0.8) {
+      if (yin && yin.probability >= 0.6) {
         hz = stabilizeHz(smoothHzRef.current, yin.hz, 90);
         hz = ema(smoothHzRef.current, hz, 0.25);
         smoothHzRef.current = hz;
@@ -355,19 +280,6 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
         } else {
           silenceStartRef.current = 0;
           centsSamplesRef.current.push(hzToCentsDiff(p, targetFreq));
-        // V12: pitch timeline (throttled)
-        const cents = hzToCentsDiff(p, targetFreq);
-        const tms = now;
-        timelineRef.current.push({ t: tms, cents, confidence: yin ? yin.probability : 0 });
-        // keep last ~6s
-        const cutoff = tms - 6000;
-        while (timelineRef.current.length && timelineRef.current[0].t < cutoff) timelineRef.current.shift();
-        const lastTL = lastTimelineTickRef.current || 0;
-        if (tms - lastTL > 120) {
-          lastTimelineTickRef.current = tms;
-          setTimelinePoints([...timelineRef.current]);
-        }
-
         // PRO: live score & ring accuracy (update ~10fps)
         const centsErr = Math.abs(hzToCentsDiff(p, targetFreq));
         const accuracy = clamp(1 - centsErr / 100, 0, 1);
@@ -474,35 +386,17 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
     const silencePenalty = clamp((totalSilentMsRef.current / ROUND_MS) * 45, 0, 45);
     const score = clamp(baseAccuracy - instabilityPenalty - silencePenalty, 0, 100);
 
-    const grade = avgAbsCents < 5 ? 'perfect' : avgAbsCents < 15 ? 'great' : avgAbsCents < 30 ? 'good' : 'bad';
-    if (grade === 'perfect') {
-      comboRef.current += 1;
-      perfectStreakRef.current += 1;
-    } else {
-      comboRef.current = 0;
-      perfectStreakRef.current = 0;
-    }
-    const comboBonus = Math.min(comboRef.current * 2, 12);
-    setCombo(comboRef.current);
-    setPerfectStreak(perfectStreakRef.current);
-
-    const scoreWithCombo = clamp(score + comboBonus, 0, 100);
-
-
     const one: RoundResult = {
       targetFreq,
       avgCentsError: avgAbsCents,
       instabilityPenalty,
       silencePenalty,
-      score: scoreWithCombo,
-      grade,
-      comboBonus,
-      combo: comboRef.current
+      score
     };
 
     setResults((prev) => {
       const next = [...prev, one];
-      if (mode === 'daily' ? next.length >= 1 : next.length >= TOTAL_ROUNDS) {
+      if (next.length >= TOTAL_ROUNDS) {
         finishGame(next);
       } else {
         window.setTimeout(() => prepareRound(next.length), 500);
@@ -534,33 +428,13 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
     setStreak(count);
 
     const weekTag = `${new Date().getFullYear()}-W${Math.ceil(new Date().getDate() / 7)}`;
-    // Back-compat: older localStorage entries may contain only {id, score, week}.
-    const boardRaw = JSON.parse(localStorage.getItem(BOARD_KEY) || '[]') as Array<Partial<LeaderRecord> & { week?: string }>;
-    const normalized = boardRaw.map((x) => ({
-      id: String(x.id ?? `anon-${Math.random().toString(36).slice(2, 7)}`),
-      score: Number(x.score ?? 0),
-      grade: (x.grade ?? 'good') as LeaderRecord['grade'],
-      comboBonus: Number(x.comboBonus ?? 0),
-      combo: Number(x.combo ?? 0),
-      week: String((x as any).week ?? weekTag)
-    }));
-
-    const scored = Math.round(finalScore);
-    const entry = {
-      id: `anon-${Math.random().toString(36).slice(2, 7)}`,
-      score: scored,
-      grade: gradeFromScore(scored),
-      comboBonus: 0,
-      combo: 0,
-      week: weekTag
-    };
-
-    const board = [...normalized, entry]
+    const boardRaw = JSON.parse(localStorage.getItem(BOARD_KEY) || '[]') as Array<LeaderRecord & { week: string }>;
+    const board = [...boardRaw, { id: `anon-${Math.random().toString(36).slice(2, 7)}`, score: Math.round(finalScore), week: weekTag }]
       .filter((x) => x.week === weekTag)
       .sort((a, b) => b.score - a.score)
       .slice(0, 5);
     localStorage.setItem(BOARD_KEY, JSON.stringify(board));
-    setLeaderboard(board.map(({ id, score, grade, comboBonus, combo }) => ({ id, score, grade, comboBonus, combo })));
+    setLeaderboard(board.map(({ id, score }) => ({ id, score })));
 
     setStage('results');
   };
@@ -697,6 +571,7 @@ const shareToStories = async () => {
       <div className="v5Backdrop" aria-hidden />
       <div className="v5Card v6GameCard">
       <h1>MiniVocalGame — вокальный челлендж</h1>
+      <p className="muted">Ограничение Instagram: авто‑публикация сторис со стикерами ограничена. Используйте Share Sheet + добавьте стикеры вручную.</p>
 
       {stage === 'setup' && (
         <section className="v6Section">
@@ -708,18 +583,6 @@ const shareToStories = async () => {
               <option value="pro">Профи</option>
             </select>
           </label>
-          <label style={{ marginTop: 10, display: 'block' }}>
-            Режим:
-            <select value={mode} onChange={(e) => setMode(e.target.value as GameMode)}>
-              <option value="classic">Classic (5 раундов)</option>
-              <option value="daily">Daily Note (1 раунд)</option>
-            </select>
-          </label>
-          {mode === 'daily' && (
-            <p style={{ marginTop: 8, opacity: 0.9 }}>
-              Daily note: <b>{dailyNote}</b>
-            </p>
-          )}
           <button onClick={connectMic} disabled={micReady}>{micReady ? 'Микрофон подключён' : 'Подключить микрофон'}</button>
           <button onClick={beginCalibration} disabled={!micReady}>Начать калибровку</button>
         </section>
@@ -741,16 +604,13 @@ const shareToStories = async () => {
           <div className="v7GameGrid">
             <div className="v7Ring">
               <PitchRingSmule cents={liveCents} note={freqToNote(pitch)} hz={pitch} confidence={confidence} />
-            <div style={{ marginTop: 12 }}>
-              <PitchTimeline points={timelinePoints} height={150} targetNote={freqToNote(targetFreq)} />
-            </div>
             </div>
 
             <div className="v7Hud">
               <div className="hudRow">
                 <div className="badge">{t('hud.live')}: <strong>{Math.round(pitch) || 0} Hz</strong></div>
                 <div className="badge">{t('hud.target')}: <strong>{freqToNote(targetFreq)}</strong></div>
-                <div className="badge">⭐ <strong>{"⭐".repeat(scoreToStars(liveScore))}</strong></div>
+                <div className="badge">{t('hud.delta')} <strong>{Math.round(liveCents)}</strong> {t('pitch.cents')}</div>
               </div>
 
               <ScoreMeter value={liveScore} max={100} label={t('hud.liveScore')} />
