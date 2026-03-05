@@ -21,10 +21,10 @@ export function PitchRingSmule({
   hz: number;
   confidence?: number;
 }) {
-  const { t } = useI18n();
+  const { t: tr } = useI18n();
   const c = clamp(cents, -50, 50);
-  const t = (c + 50) / 100; // 0..1
-  const angle = -120 + t * 240; // -120..+120
+  const prog = (c + 50) / 100; // 0..1
+  const angle = -120 + prog * 240; // -120..+120
   const good = Math.abs(c) <= 10;
   const glow = clamp(confidence, 0, 1) * (good ? 1 : 0.6);
 
@@ -49,7 +49,7 @@ export function PitchRingSmule({
       >
         <div className="smuleNote">{note}</div>
         <div className="smuleHz">{Math.round(hz)} Hz</div>
-        <div className="smuleCents">{Math.round(c)} {t("pitch.cents")}</div>
+        <div className="smuleCents">{Math.round(c)} {tr("pitch.cents")}</div>
       </motion.div>
 
       <motion.div
