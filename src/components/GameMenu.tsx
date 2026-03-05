@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { useI18n } from "../i18n";
 
 type Props = {
   onStart: () => void;
@@ -6,6 +7,8 @@ type Props = {
 };
 
 export default function GameMenu({ onStart, onLeaderboard }: Props) {
+  const { t } = useI18n();
+
   return (
     <div className="menuShell">
       <div className="menuBackdrop" aria-hidden />
@@ -16,27 +19,27 @@ export default function GameMenu({ onStart, onLeaderboard }: Props) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45, ease: "easeOut" }}
       >
-        <div className="menuHero">
-          <img className="menuHeroImg" src="/cover.jpg" alt="MiniVocalGame" />
-          <div className="menuHeroOverlay" aria-hidden />
+        <div className="menuHero" aria-hidden>
+          <img className="menuHeroImg" src="/cover.jpg" alt="" />
+          <div className="menuHeroOverlay" />
         </div>
 
         <div className="menuHead">
           <div className="menuKicker">Jivoi Zvuk</div>
           <h2 className="menuTitle">MiniVocalGame</h2>
-          <div className="menuSub">Vocal Pitch Challenge</div>
+          <div className="menuSub">{t("menu.tagline")}</div>
         </div>
 
         <div className="menuButtons">
           <button className="menuPrimary" onClick={onStart} type="button">
-            ▶ Start Singing
+            ▶ {t("menu.start")}
           </button>
           <button className="menuSecondary" onClick={onLeaderboard} type="button">
-            🏆 Leaderboard
+            🏆 {t("menu.leaderboard")}
           </button>
         </div>
 
-        <div className="menuTip">Tip: use headphones for best accuracy.</div>
+        <div className="menuTip">{t("menu.tip")}</div>
       </motion.div>
     </div>
   );

@@ -53,7 +53,7 @@ export default function App() {
       <AnimatePresence mode="wait">
 
         {screen === "splash" && (
-          <SplashScreen onStart={() => setScreen("menu")} />
+          <SplashScreen onFinish={() => setScreen("menu")} />
         )}
 
         {screen === "menu" && (

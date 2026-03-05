@@ -56,6 +56,11 @@ const DICTS: Record<Lang, Dict> = {
     "pitch.nice": "Отлично!",
     "pitch.tune": "Подстрой",
     "score.label": "Score",
+    "menu.start": "Старт",
+    "menu.leaderboard": "Таблица",
+    "menu.tip": "Совет: используйте наушники для лучшей точности.",
+    "menu.tagline": "Вокальный pitch-челлендж",
+    "menu.continue": "Продолжить",
   },
   en: {
     "lang.ru": "Русский",
@@ -102,6 +107,11 @@ const DICTS: Record<Lang, Dict> = {
     "pitch.nice": "Nice!",
     "pitch.tune": "Tune it",
     "score.label": "Score",
+    "menu.start": "Start",
+    "menu.leaderboard": "Leaderboard",
+    "menu.tip": "Tip: use headphones for best accuracy.",
+    "menu.tagline": "Vocal pitch challenge",
+    "menu.continue": "Continue",
   },
 };
 
