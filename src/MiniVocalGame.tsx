@@ -176,6 +176,7 @@ export default function MiniVocalGame() {
   const [range, setRange] = useState<{ low: number; high: number }>({ low: 165, high: 440 });
   const [micReady, setMicReady] = useState(false);
   const [pitch, setPitch] = useState(0);
+  const [confidence, setConfidence] = useState(0);
   const [volume, setVolume] = useState(0);
   const [roundIndex, setRoundIndex] = useState(0);
   const [targetFreq, setTargetFreq] = useState(220);
@@ -242,6 +243,7 @@ export default function MiniVocalGame() {
       analyserRef.current.getFloatTimeDomainData(buffer);
       const rms = rmsFromBuffer(buffer);
       const yin = rms >= 0.01 ? yinPitch(buffer, audioCtxRef.current.sampleRate) : null;
+      setConfidence(yin ? yin.probability : 0);
 
       let hz = 0;
       if (yin && yin.probability >= 0.6) {
@@ -578,24 +580,24 @@ const shareToStories = async () => {
       {stage === 'game' && (
         <section className="v6Section">
           <h2>Раунд {roundIndex + 1} / {TOTAL_ROUNDS}</h2>
-          <div className=\"v6Center\">
-            <AccuracyRing cents={liveCents} />
-          </div>
-          <div className="hud">
-            <div className="hudRow">
-              <div className="badge">Live score: <strong>{liveScore}</strong></div>
-              <div className="badge">Target: <strong>{freqToNote(targetFreq)}</strong></div>
+          <div className="v7GameGrid">
+            <div className="v7Ring">
+              <PitchRingSmule cents={liveCents} note={freqToNote(pitch)} hz={pitch} confidence={confidence} />
             </div>
 
-            <div className="pitchRing" aria-label="Pitch accuracy">
-              <div
-                className="pitchRingFill"
-                style={{
-                  transform: `scale(${clamp(1 - Math.abs(hzToCentsDiff(pitch, targetFreq)) / 200, 0, 1)})`,
-                }}
-              />
-              <div className="pitchNote">{freqToNote(pitch)}</div>
-              <div className="pitchHz">{Math.round(pitch)} Hz</div>
+            <div className="v7Hud">
+              <div className="hudRow">
+                <div className="badge">Live: <strong>{Math.round(pitch) || 0} Hz</strong></div>
+                <div className="badge">Target: <strong>{freqToNote(targetFreq)}</strong></div>
+                <div className="badge">Δ <strong>{Math.round(liveCents)}</strong> cents</div>
+              </div>
+
+              <ScoreMeter value={liveScore} max={100} label="Live score" />
+
+              <div className="hudRow">
+                <div className="badge subtle">Streak: <strong>{currentCombo}</strong></div>
+                <div className="badge subtle">Confidence: <strong>{Math.round(confidence * 100)}%</strong></div>
+              </div>
             </div>
           </div>
           <p>{volumeHint}</p>
