@@ -189,6 +189,14 @@ function levelFromScore(score: number): string {
   return 'Новичок';
 }
 
+
+function scoreToStars(score: number): number {
+  if (score >= 95) return 5;
+  if (score >= 85) return 4;
+  if (score >= 70) return 3;
+  if (score >= 50) return 2;
+  return 1;
+}
 const freqToMidi = (freq: number) => 12 * Math.log2(freq / 440) + 69;
 const midiToFreq = (midi: number) => 440 * Math.pow(2, (midi - 69) / 12);
 
@@ -689,7 +697,6 @@ const shareToStories = async () => {
       <div className="v5Backdrop" aria-hidden />
       <div className="v5Card v6GameCard">
       <h1>MiniVocalGame — вокальный челлендж</h1>
-      <p className="muted">Ограничение Instagram: авто‑публикация сторис со стикерами ограничена. Используйте Share Sheet + добавьте стикеры вручную.</p>
 
       {stage === 'setup' && (
         <section className="v6Section">
@@ -743,7 +750,7 @@ const shareToStories = async () => {
               <div className="hudRow">
                 <div className="badge">{t('hud.live')}: <strong>{Math.round(pitch) || 0} Hz</strong></div>
                 <div className="badge">{t('hud.target')}: <strong>{freqToNote(targetFreq)}</strong></div>
-                <div className="badge">{t('hud.delta')} <strong>{Math.round(liveCents)}</strong> {t('pitch.cents')}</div>
+                <div className="badge">⭐ <strong>{"⭐".repeat(scoreToStars(liveScore))}</strong></div>
               </div>
 
               <ScoreMeter value={liveScore} max={100} label={t('hud.liveScore')} />

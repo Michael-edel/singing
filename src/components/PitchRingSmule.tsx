@@ -5,6 +5,16 @@ function clamp(n: number, a: number, b: number) {
   return Math.max(a, Math.min(b, n));
 }
 
+
+function centsToStars(cents: number): number {
+  const a = Math.abs(cents);
+  if (a < 5) return 5;
+  if (a < 15) return 4;
+  if (a < 30) return 3;
+  if (a < 50) return 2;
+  return 1;
+}
+
 /**
  * Smule-style pitch ring.
  * cents: [-50..+50] ideally. Values outside are clamped for display.
@@ -49,7 +59,7 @@ export function PitchRingSmule({
       >
         <div className="smuleNote">{note}</div>
         <div className="smuleHz">{Math.round(hz)} Hz</div>
-        <div className="smuleCents">{Math.round(c)} {tr("pitch.cents")}</div>
+        <div className="smuleCents">{"⭐".repeat(centsToStars(c))}</div>
       </motion.div>
 
       <motion.div
