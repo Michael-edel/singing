@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AccuracyRing } from './components/AccuracyRing';
+import { PitchRingSmule } from './components/PitchRingSmule';
+import { ScoreMeter } from './components/ScoreMeter';
 
 const TOTAL_ROUNDS = 5;
 const CALIBRATION_MS = 6000;
@@ -180,7 +182,7 @@ export default function MiniVocalGame() {
   const [volume, setVolume] = useState(0);
   const [roundIndex, setRoundIndex] = useState(0);
   const [targetFreq, setTargetFreq] = useState(220);
-  const liveCents = useMemo(() => (pitch > 0 && targetFreq > 0 ? centsOff(pitch, targetFreq) : 0), [pitch, targetFreq]);
+  const liveCents = useMemo(() => (pitch > 0 && targetFreq > 0 ? hzToCentsDiff(pitch, targetFreq) : 0), [pitch, targetFreq]);
   const [holding, setHolding] = useState(false);
   const [autoPaused, setAutoPaused] = useState(false);
   const [pauseMsg, setPauseMsg] = useState('');
@@ -254,6 +256,7 @@ export default function MiniVocalGame() {
         smoothHzRef.current = null;
       }
 
+      const p = hz;
       setPitch(hz);
       setVolume(rms);
 
@@ -595,7 +598,7 @@ const shareToStories = async () => {
               <ScoreMeter value={liveScore} max={100} label="Live score" />
 
               <div className="hudRow">
-                <div className="badge subtle">Streak: <strong>{currentCombo}</strong></div>
+                <div className="badge subtle">Streak: <strong>{streak}</strong></div>
                 <div className="badge subtle">Confidence: <strong>{Math.round(confidence * 100)}%</strong></div>
               </div>
             </div>
