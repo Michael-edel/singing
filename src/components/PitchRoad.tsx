@@ -102,10 +102,10 @@ export default function PitchRoad({ points, windowMs = 6000 }: Props) {
     <div className="pitchRoadWrap">
       <canvas ref={canvasRef} className="pitchRoad" width={720} height={220} />
       <div className="pitchRoadLegend" aria-hidden>
-        <span>⭐ perfect</span>
-        <span>✨ great</span>
-        <span>👍 good</span>
-        <span>• bad</span>
+        <span>⭐ идеально</span>
+        <span>✨ отлично</span>
+        <span>👍 нормально</span>
+        <span>• мимо</span>
       </div>
     </div>
   );
