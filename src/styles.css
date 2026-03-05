@@ -886,86 +886,6 @@ ul, ol { margin-top: 0; }
   display:flex;
   justify-content:center;
 }
-.homeBackdrop{
-  position: fixed;
-  inset: 0;
-  pointer-events:none;
-}
-.homeCard{
-  width: min(560px, 100%);
-  border-radius: 22px;
-  padding: 18px 18px 20px;
-  background: rgba(18,18,28,0.55);
-  border: 1px solid rgba(255,255,255,0.10);
-  box-shadow: 0 16px 70px rgba(0,0,0,0.45);
-  backdrop-filter: blur(14px);
-}
-.homeHero{
-  position: relative;
-  border-radius: 16px;
-  overflow: hidden;
-  height: 160px;
-  margin-bottom: 14px;
-}
-.homeHeroImg{
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transform: scale(1.06);
-  filter: contrast(1.05) saturate(1.05);
-}
-.homeHeroOverlay{
-  position:absolute;
-  inset:0;
-  background: linear-gradient(180deg, rgba(0,0,0,0.05), rgba(0,0,0,0.62));
-}
-.homeHead{
-  text-align:center;
-  padding: 2px 4px 10px;
-}
-.homeKicker{
-  font-size: 11px;
-  letter-spacing: 2.2px;
-  opacity: 0.72;
-  text-transform: uppercase;
-}
-.homeTitle{
-  margin: 6px 0 2px;
-  font-size: 28px;
-  font-weight: 700;
-}
-.homeSub{
-  opacity: 0.78;
-  font-size: 14px;
-}
-.homeActions{
-  display:flex;
-  flex-direction: column;
-  gap: 12px;
-  align-items: center;
-  padding-top: 6px;
-}
-.homePrimary{
-  width: 100%;
-  font-size: 18px;
-  padding: 14px 16px;
-}
-.homeLink{
-  background: transparent;
-  border: 1px solid rgba(255,255,255,0.12);
-  color: rgba(255,255,255,0.92);
-  padding: 10px 14px;
-  border-radius: 14px;
-  width: 100%;
-  cursor:pointer;
-}
-.homeLink:hover{ border-color: rgba(255,255,255,0.22); }
-.homeTip{
-  font-size: 12px;
-  opacity: 0.65;
-  text-align:center;
-}
-
 /* ===== V19 GAME SETUP (inside MiniVocalGame) ===== */
 .homeGameSetup{
   padding: 14px 6px 4px;
@@ -1060,3 +980,114 @@ ul, ol { margin-top: 0; }
   font-size: 12px;
   opacity: 0.65;
 }
+
+
+/* ===== V20 layout centering ===== */
+.screenWrap{
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+.screenInner{
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+/* ===== V20 Home (game-like) ===== */
+.homeBackdrop{
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(1200px 700px at 50% 35%, rgba(130,120,255,0.18), transparent 55%),
+    radial-gradient(900px 600px at 70% 55%, rgba(80,200,255,0.10), transparent 60%),
+    url("/cover.jpg");
+  background-size: cover;
+  background-position: center;
+  filter: blur(22px) saturate(1.05);
+  opacity: 0.22;
+}
+
+.homeCardV20{
+  padding: 22px 18px 18px;
+}
+
+.homeBrand{
+  text-align: center;
+  margin-bottom: 14px;
+}
+
+.homeBadge{
+  display:inline-flex;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(15,16,22,0.45);
+  font-size: 11px;
+  letter-spacing: 2.6px;
+  opacity: 0.9;
+}
+
+.homeTitleV20{
+  margin: 10px 0 6px;
+  font-size: 34px;
+  line-height: 1.05;
+}
+
+.homeSubV20{
+  font-size: 14px;
+  opacity: 0.82;
+}
+
+.homeCTA{
+  margin-top: 14px;
+}
+
+.homePrimaryV20{
+  border-radius: 22px;
+}
+
+.micBtn{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap: 10px;
+  padding: 18px 16px;
+}
+
+.micIcon{
+  font-size: 22px;
+  filter: drop-shadow(0 10px 25px rgba(0,0,0,0.35));
+}
+
+.micText{
+  font-size: 18px;
+}
+
+.homeRow{
+  margin-top: 10px;
+  display:flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.homePill{
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(18,18,28,0.35);
+  color: rgba(255,255,255,0.9);
+  border-radius: 999px;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+.homeTipV20{
+  font-size: 12px;
+  opacity: 0.7;
+  text-align:center;
+  max-width: 42ch;
+}
+
+/* Ensure no horizontal overflow artifacts */
+html, body { width: 100%; max-width: 100%; overflow-x: hidden; }

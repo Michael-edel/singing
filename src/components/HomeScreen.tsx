@@ -14,32 +14,31 @@ export default function HomeScreen({ onStart, onLeaderboard }: Props) {
     <div className="homeShell">
       <div className="homeBackdrop" aria-hidden />
       <motion.div
-        className="homeCard"
+        className="homeCard homeCardV20"
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
+        transition={{ duration: 0.55, ease: "easeOut" }}
       >
-        <div className="homeHero">
-          <img className="homeHeroImg" src="/cover.jpg" alt="MiniVocalGame" />
-          <div className="homeHeroOverlay" aria-hidden />
+        <div className="homeBrand">
+          <div className="homeBadge">JIV0I ZVUK</div>
+          <h1 className="homeTitleV20">MiniVocalGame</h1>
+          <div className="homeSubV20">{t("home.subtitle")}</div>
         </div>
 
-        <div className="homeHead">
-          <div className="homeKicker">Jivoi Zvuk</div>
-          <h1 className="homeTitle">MiniVocalGame</h1>
-          <div className="homeSub">{t("home.subtitle")}</div>
-        </div>
-
-        <div className="homeActions">
-          <GlowButton onClick={onStart} className="homePrimary">
-            🎤 {t("home.start")}
+        <div className="homeCTA">
+          <GlowButton onClick={onStart} className="homePrimaryV20">
+            <span className="micBtn">
+              <span className="micIcon">🎤</span>
+              <span className="micText">{t("home.start")}</span>
+            </span>
           </GlowButton>
 
-          <button type="button" className="homeLink" onClick={onLeaderboard}>
-            🏆 {t("home.leaderboard")}
-          </button>
-
-          <div className="homeTip">{t("home.tip")}</div>
+          <div className="homeRow">
+            <button type="button" className="homePill" onClick={onLeaderboard}>
+              🏆 {t("home.leaderboard")}
+            </button>
+            <div className="homeTipV20">{t("home.tip")}</div>
+          </div>
         </div>
       </motion.div>
     </div>
