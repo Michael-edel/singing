@@ -742,7 +742,7 @@ const shareToStories = async () => {
             <div className="v7Ring">
               <PitchRingSmule cents={liveCents} note={freqToNote(pitch)} hz={pitch} confidence={confidence} />
             <div style={{ marginTop: 12 }}>
-              <PitchTimeline points={timelinePoints} height={120} />
+              <PitchTimeline points={timelinePoints} height={150} targetNote={freqToNote(targetFreq)} />
             </div>
             </div>
 
