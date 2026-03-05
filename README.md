@@ -2,6 +2,8 @@
 # 🎤 MiniVocalGame
 ### Vocal Pitch Challenge by **Jivoi Zvuk**
 
+**Current Version:** `V22` (package `0.22.0`)
+
 Interactive web game that tests how accurately you can sing a musical note.
 
 Users sing into the microphone, and the app analyzes the pitch in real time and evaluates vocal accuracy.
