@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useI18n } from "../i18n";
 
 type User = { id: string; name?: string; email?: string; avatar?: string; provider?: string };
 
@@ -15,6 +16,7 @@ declare global {
 }
 
 export function AuthPanel({ user, onUser }: Props) {
+  const { lang, setLang, t } = useI18n();
   const googleBtnRef = useRef<HTMLDivElement | null>(null);
   const [busy, setBusy] = useState(false);
   const googleRenderedRef = useRef(false);
@@ -76,12 +78,12 @@ export function AuthPanel({ user, onUser }: Props) {
     const clientId = import.meta.env.VITE_APPLE_CLIENT_ID;
     const redirectURI = import.meta.env.VITE_APPLE_REDIRECT_URI;
     if (!clientId || !redirectURI) {
-      alert("Apple login: set VITE_APPLE_CLIENT_ID and VITE_APPLE_REDIRECT_URI");
+      alert(t("auth.apple.missing"));
       return;
     }
     const w = window as any;
     if (!w.AppleID?.auth) {
-      alert("AppleID SDK not loaded yet. Try again.");
+      alert(t("auth.apple.sdk"));
       return;
     }
 
@@ -108,7 +110,7 @@ export function AuthPanel({ user, onUser }: Props) {
       onUser(data.user ?? null);
     } catch (e: any) {
       console.warn(e);
-      alert("Apple sign-in cancelled or failed.");
+      alert(t("auth.apple.failed"));
     } finally {
       setBusy(false);
     }
@@ -127,21 +129,41 @@ export function AuthPanel({ user, onUser }: Props) {
           <div className="authUser">
             {user.avatar ? <img className="avatar" src={user.avatar} alt="" /> : <div className="avatar ph" />}
             <div>
-              <div className="authName">{user.name ?? "User"}</div>
+              <div className="authName">{user.name ?? t("auth.user")}</div>
               <div className="authMeta">{user.provider ?? ""}{user.email ? ` • ${user.email}` : ""}</div>
             </div>
           </div>
-          <button className="btn subtle" onClick={logout} disabled={busy}>Logout</button>
+          <div className="authBtns">
+            <select
+              className="langSelect"
+              value={lang}
+              onChange={(e) => setLang(e.target.value as any)}
+              aria-label="Language"
+            >
+              <option value="ru">{t("lang.ru")}</option>
+              <option value="en">{t("lang.en")}</option>
+            </select>
+            <button className="btn subtle" onClick={logout} disabled={busy}>{t("auth.logout")}</button>
+          </div>
         </div>
       ) : (
         <div className="authRow">
           <div>
-            <div className="authTitle">Sign in to appear in the leaderboard</div>
-            <div className="authMeta">Google / Apple</div>
+            <div className="authTitle">{t("auth.title")}</div>
+            <div className="authMeta">{t("auth.providers")}</div>
           </div>
           <div className="authBtns">
             <div ref={googleBtnRef} />
-            <button className="btn apple" onClick={loginApple} disabled={busy}> Sign in with Apple</button>
+            <button className="btn apple" onClick={loginApple} disabled={busy}>{t("auth.apple")}</button>
+            <select
+              className="langSelect"
+              value={lang}
+              onChange={(e) => setLang(e.target.value as any)}
+              aria-label="Language"
+            >
+              <option value="ru">{t("lang.ru")}</option>
+              <option value="en">{t("lang.en")}</option>
+            </select>
           </div>
         </div>
       )}

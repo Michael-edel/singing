@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { useI18n } from "../i18n";
 
 function clamp(n: number, a: number, b: number) {
   return Math.max(a, Math.min(b, n));
@@ -20,6 +21,7 @@ export function PitchRingSmule({
   hz: number;
   confidence?: number;
 }) {
+  const { t } = useI18n();
   const c = clamp(cents, -50, 50);
   const t = (c + 50) / 100; // 0..1
   const angle = -120 + t * 240; // -120..+120
@@ -47,7 +49,7 @@ export function PitchRingSmule({
       >
         <div className="smuleNote">{note}</div>
         <div className="smuleHz">{Math.round(hz)} Hz</div>
-        <div className="smuleCents">{Math.round(c)} cents</div>
+        <div className="smuleCents">{Math.round(c)} {t("pitch.cents")}</div>
       </motion.div>
 
       <motion.div

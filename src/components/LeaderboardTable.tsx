@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useI18n } from "../i18n";
 
 export type LeaderRow = {
   rank: number;
@@ -10,6 +11,7 @@ export type LeaderRow = {
 };
 
 export function LeaderboardTable() {
+  const { t } = useI18n();
   const [rows, setRows] = useState<LeaderRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -29,15 +31,15 @@ export function LeaderboardTable() {
   return (
     <div className="leaderCard">
       <div className="leaderHeader">
-        <div className="leaderTitle">Participants</div>
-        <button className="btn subtle" onClick={load} disabled={loading}>{loading ? "Loading…" : "Refresh"}</button>
+        <div className="leaderTitle">{t("lb.title")}</div>
+        <button className="btn subtle" onClick={load} disabled={loading}>{loading ? t("lb.loading") : t("lb.refresh")}</button>
       </div>
 
       <div className="leaderTable">
         <div className="leaderRow head">
           <div>#</div>
-          <div>Player</div>
-          <div className="right">Best</div>
+          <div>{t("lb.player")}</div>
+          <div className="right">{t("lb.best")}</div>
         </div>
 
         {rows.map((r) => (
@@ -45,14 +47,14 @@ export function LeaderboardTable() {
             <div className="muted">{r.rank}</div>
             <div className="playerCell">
               {r.avatar ? <img className="avatar sm" src={r.avatar} alt="" /> : <div className="avatar sm ph" />}
-              <div className="playerName">{r.name ?? "Anonymous"}</div>
+              <div className="playerName">{r.name ?? t("lb.anon")}</div>
             </div>
             <div className="right score">{r.best_score}</div>
           </div>
         ))}
 
         {!rows.length && !loading ? (
-          <div className="empty">No scores yet. Be the first 🎤</div>
+          <div className="empty">{t("lb.empty")}</div>
         ) : null}
       </div>
     </div>

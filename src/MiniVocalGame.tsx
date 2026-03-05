@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AccuracyRing } from './components/AccuracyRing';
 import { PitchRingSmule } from './components/PitchRingSmule';
 import { ScoreMeter } from './components/ScoreMeter';
+import { useI18n } from './i18n';
 
 const TOTAL_ROUNDS = 5;
 const CALIBRATION_MS = 6000;
@@ -172,6 +173,7 @@ function levelFromScore(score: number): string {
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
 export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onSubmitScore?: (p: { score: number; accuracy: number }) => void }) {
+  const { t } = useI18n();
   const [stage, setStage] = useState<Stage>('setup');
   const [difficulty, setDifficulty] = useState<Difficulty>('newbie');
   const [calibStep, setCalibStep] = useState<CalibStep>('low');
@@ -568,7 +570,7 @@ const shareToStories = async () => {
     <div className="v5Shell v6Shell">
       <div className="v5Backdrop" aria-hidden />
       <div className="v5Card v6GameCard">
-      <h1>MiniVocalGame — IG Challenge</h1>
+      <h1>MiniVocalGame — вокальный челлендж</h1>
       <p className="muted">Ограничение Instagram: авто‑публикация сторис со стикерами ограничена. Используйте Share Sheet + добавьте стикеры вручную.</p>
 
       {stage === 'setup' && (
@@ -577,8 +579,8 @@ const shareToStories = async () => {
           <label>
             Сложность:
             <select value={difficulty} onChange={(e) => setDifficulty(e.target.value as Difficulty)}>
-              <option value="newbie">newbie</option>
-              <option value="pro">pro</option>
+              <option value="newbie">Новичок</option>
+              <option value="pro">Профи</option>
             </select>
           </label>
           <button onClick={connectMic} disabled={micReady}>{micReady ? 'Микрофон подключён' : 'Подключить микрофон'}</button>
@@ -606,16 +608,16 @@ const shareToStories = async () => {
 
             <div className="v7Hud">
               <div className="hudRow">
-                <div className="badge">Live: <strong>{Math.round(pitch) || 0} Hz</strong></div>
-                <div className="badge">Target: <strong>{freqToNote(targetFreq)}</strong></div>
-                <div className="badge">Δ <strong>{Math.round(liveCents)}</strong> cents</div>
+                <div className="badge">{t('hud.live')}: <strong>{Math.round(pitch) || 0} Hz</strong></div>
+                <div className="badge">{t('hud.target')}: <strong>{freqToNote(targetFreq)}</strong></div>
+                <div className="badge">{t('hud.delta')} <strong>{Math.round(liveCents)}</strong> {t('pitch.cents')}</div>
               </div>
 
-              <ScoreMeter value={liveScore} max={100} label="Live score" />
+              <ScoreMeter value={liveScore} max={100} label={t('hud.liveScore')} />
 
               <div className="hudRow">
-                <div className="badge subtle">Streak: <strong>{streak}</strong></div>
-                <div className="badge subtle">Confidence: <strong>{Math.round(confidence * 100)}%</strong></div>
+                <div className="badge subtle">{t('hud.streak')}: <strong>{streak}</strong></div>
+                <div className="badge subtle">{t('hud.confidence')}: <strong>{Math.round(confidence * 100)}%</strong></div>
               </div>
             </div>
           </div>
@@ -651,21 +653,21 @@ const shareToStories = async () => {
           <label>
             Стиль карточки:
             <select value={cardStyle} onChange={(e) => setCardStyle(e.target.value as CardStyle)}>
-              <option value="minimal">minimal</option>
-              <option value="neon">neon</option>
-              <option value="karaoke">karaoke</option>
+              <option value="minimal">Минимал</option>
+              <option value="neon">Неон</option>
+              <option value="karaoke">Караоке</option>
             </select>
           </label>
 
           <label>
-            UTM template:
+            UTM шаблон:
             <select value={template} onChange={(e) => setTemplate(e.target.value as 'template_a' | 'template_b')}>
-              <option value="template_a">template_a</option>
-              <option value="template_b">template_b</option>
+              <option value="template_a">Шаблон A</option>
+              <option value="template_b">Шаблон B</option>
             </select>
           </label>
 
-          <p>Link sticker URL: <a href={utmUrl} target="_blank" rel="noreferrer">{utmUrl}</a></p>
+          <p>Ссылка для стикера: <a href={utmUrl} target="_blank" rel="noreferrer">{utmUrl}</a></p>
           <div className="shareRow">
           <button onClick={shareToStories}>Поделиться в Stories</button>
           <button onClick={shareResultText}>Поделиться текстом</button>
@@ -676,7 +678,7 @@ const shareToStories = async () => {
           <ul>{history.map((h) => <li key={h.date}>{new Date(h.date).toLocaleString()} — {h.score} ({h.level})</li>)}</ul>
           <p>Ежедневная серия: {streak} 🔥</p>
 
-          <h3>Weekly leaderboard (local top-5)</h3>
+          <h3>Недельный рейтинг (локальный топ‑5)</h3>
           <ol>{leaderboard.map((x) => <li key={x.id}>{x.id}: {x.score}</li>)}</ol>
 
           <button onClick={resetAll}>Полный перезапуск челленджа</button>
