@@ -8,7 +8,7 @@ import { useI18n } from './i18n';
 
 const TOTAL_ROUNDS = 5;
 const CALIBRATION_MS = 6000;
-const ROUND_MS = 5000;
+const ROUND_MS = 2500;
 const SILENCE_AUTOPAUSE_MS = 1000;
 const HISTORY_KEY = 'mini-vocal-history';
 const STREAK_KEY = 'mini-vocal-streak';
@@ -207,6 +207,9 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
   const [range, setRange] = useState<{ low: number; high: number }>({ low: 165, high: 440 });
   const [micReady, setMicReady] = useState(false);
   const [showAdvancedSetup, setShowAdvancedSetup] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    try { return localStorage.getItem('mv_onboard_v21') !== '1'; } catch { return true; }
+  });
 
   const [pitch, setPitch] = useState(0);
   const [confidence, setConfidence] = useState(0);
@@ -223,9 +226,10 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
   const [leaderboard, setLeaderboard] = useState<LeaderRecord[]>([]);
   const [cardStyle, setCardStyle] = useState<CardStyle>('minimal');
   const [template, setTemplate] = useState<'template_a' | 'template_b'>('template_a');
-  const [liveScore, setLiveScore] = useState(0);
-  const liveScoreRef = useRef(0);
-  const lastScoreTickRef = useRef(0);
+  const [liveAccuracy, setLiveAccuracy] = useState(0);
+  const [holdProgress, setHoldProgress] = useState(0);
+  const [lastRoundScore, setLastRoundScore] = useState<number | null>(null);
+  const lastUiTickRef = useRef(0);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -333,14 +337,18 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
               setPitchRoadPoints([...tracePointsRef.current]);
             }
           }
-        // PRO: live score & ring accuracy (update ~10fps)
+        // V21: live accuracy + hold progress (update ~10fps)
         const centsErr = Math.abs(hzToCentsDiff(p, targetFreq));
-        const accuracy = clamp(1 - centsErr / 100, 0, 1);
-        liveScoreRef.current += accuracy * 0.8; // tune gain
-        const last = lastScoreTickRef.current || 0;
+        const accuracyPct = clamp(100 - centsErr * 2, 0, 100);
+
+        const elapsedHold = now - holdStartRef.current;
+        const progress = clamp(elapsedHold / ROUND_MS, 0, 1);
+
+        const last = lastUiTickRef.current || 0;
         if (now - last > 100) {
-          lastScoreTickRef.current = now;
-          setLiveScore(Math.round(liveScoreRef.current));
+          lastUiTickRef.current = now;
+          setLiveAccuracy(Math.round(accuracyPct));
+          setHoldProgress(progress);
         }
 
         }
@@ -363,6 +371,40 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
     }
     setStage('game');
     prepareRound(0);
+  };
+
+
+  const playReferenceTone = async () => {
+    try {
+      // ensure audio context exists and is resumed (required on iOS)
+      if (!audioCtxRef.current) {
+        await connectMic();
+      }
+      const ctx = audioCtxRef.current;
+      if (!ctx) return;
+      if (ctx.state === 'suspended') await ctx.resume();
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = targetFreq;
+
+      const now = ctx.currentTime;
+      // soft fade-in/out to avoid click
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.35, now + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.8);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.82);
+      osc.onended = () => {
+        try { osc.disconnect(); } catch {}
+        try { gain.disconnect(); } catch {}
+      };
+    } catch {}
   };
 
   const beginCalibration = () => {
@@ -420,9 +462,10 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
   };
 
   const startHold = () => {
-    liveScoreRef.current = 0;
-    setLiveScore(0);
-    lastScoreTickRef.current = 0;
+    setLastRoundScore(null);
+    setLiveAccuracy(0);
+    setHoldProgress(0);
+    lastUiTickRef.current = 0;
     if (autoPaused) return;
     setHolding(true);
     holdStartRef.current = performance.now();
@@ -450,6 +493,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
     const instabilityPenalty = clamp(stdev * stabilityWeight, 0, 40);
     const silencePenalty = clamp((totalSilentMsRef.current / ROUND_MS) * 45, 0, 45);
     const score = clamp(baseAccuracy - instabilityPenalty - silencePenalty, 0, 100);
+    setLastRoundScore(Math.round(score));
 
     const one: RoundResult = {
       targetFreq,
@@ -637,6 +681,30 @@ const shareToStories = async () => {
       <div className="v5Card v6GameCard">
       <h1>MiniVocalGame — вокальный челлендж</h1>
 
+{showOnboarding && stage === 'game' && roundIndex === 0 ? (
+        <div className="onboardOverlay" role="dialog" aria-modal="true">
+          <div className="onboardCard">
+            <div className="onboardTitle">Как играть</div>
+            <ol className="onboardSteps">
+              <li>Нажмите <b>«Включить микрофон»</b> и разрешите доступ.</li>
+              <li>Нажмите и удерживайте <b>«Удерживать ноту»</b>.</li>
+              <li>Пойте ноту <b>{freqToNote(targetFreq)}</b> около <b>{Math.round(ROUND_MS / 1000)} сек</b> — получите ⭐ и очки.</li>
+            </ol>
+            <div className="onboardActions">
+              <button
+                className="primary"
+                onClick={() => {
+                  try { localStorage.setItem('mv_onboard_v21', '1'); } catch {}
+                  setShowOnboarding(false);
+                }}
+              >
+                Понятно
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
 
       {stage === 'setup' && (
         <section className="homeGameSetup">
@@ -714,16 +782,27 @@ const shareToStories = async () => {
               <div className="hudRow">
                 <div className="badge">{t('hud.live')}: <strong>{Math.round(pitch) || 0} Hz</strong></div>
                 <div className="badge">{t('hud.target')}: <strong>{freqToNote(targetFreq)}</strong></div>
+                <button className="badge btn" onClick={playReferenceTone} title={t('hud.playTone')}>🔊 {t('hud.playTone')}</button>
                 <div className="badge">⭐ <strong>{'⭐'.repeat(starsFromAbsCents(Math.abs(liveCents || 0)))}</strong></div>
               </div>
 
-              {!holding ? (
-                <div className="hintCard">
-                  <div className="hintTitle">{t("hint.title")} <strong>{freqToNote(targetFreq)}</strong></div>
-                  <div className="hintBody">{t("hint.body")}</div>
+              {holding ? (
+                <div>
+                  <ScoreMeter value={liveAccuracy} max={100} label={t('hud.accuracy')} />
+                  <div className="holdProgress">
+                    <div className="holdProgressBar" style={{ width: `${Math.round(holdProgress * 100)}%` }} />
+                  </div>
+                  <div className="hint subtle">
+                    {t('hud.holdHint')} <strong>{Math.max(0, Math.ceil((ROUND_MS - (performance.now() - holdStartRef.current)) / 1000))}</strong>s
+                  </div>
                 </div>
               ) : (
-                <ScoreMeter value={liveScore} max={100} label={t("hud.accuracy")} />
+                <div className="hint">
+                  {t('hud.holdToScore')}
+                  {lastRoundScore !== null ? (
+                    <div className="hintScore">{t('hud.roundScore')}: <strong>{lastRoundScore}</strong></div>
+                  ) : null}
+                </div>
               )}
 
               <div className="hudRow">

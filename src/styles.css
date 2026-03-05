@@ -1062,22 +1062,57 @@ ul, ol { margin-top: 0; }
 }
 
 
-/* V20 UX: round hint */
-.hintCard{
-  width: 100%;
-  padding: 12px 12px;
+/* V21 Onboarding + Hold Progress */
+.onboardOverlay{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+}
+.onboardCard{
+  width: min(520px, 92vw);
   border-radius: 18px;
-  background: rgba(255,255,255,.04);
-  box-shadow: 0 0 0 1px rgba(255,255,255,.08) inset;
-  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(15,18,25,0.92);
+  box-shadow: 0 20px 80px rgba(0,0,0,0.55);
+  padding: 18px 18px 16px;
 }
-.hintTitle{
-  font-size: 12px;
-  color: rgba(255,255,255,.9);
-  margin-bottom: 6px;
+.onboardTitle{
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 10px;
 }
-.hintBody{
-  font-size: 12px;
+.onboardSteps{
+  margin: 0;
+  padding-left: 18px;
+  color: rgba(255,255,255,0.86);
   line-height: 1.35;
-  color: rgba(255,255,255,.72);
 }
+.onboardSteps li{ margin: 8px 0; }
+.onboardActions{ display:flex; justify-content:flex-end; margin-top: 12px; }
+
+.holdProgress{
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.10);
+  overflow: hidden;
+  margin-top: 10px;
+}
+.holdProgressBar{
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(93,108,255,1), rgba(68,190,255,1));
+}
+.hint{ margin-top: 10px; color: rgba(255,255,255,0.85); font-size: 13px; }
+.hint.subtle{ color: rgba(255,255,255,0.65); }
+.hintScore{ margin-top: 6px; }
+.badge.btn{
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.06);
+}
+.badge.btn:hover{ background: rgba(255,255,255,0.10); }
