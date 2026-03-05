@@ -301,7 +301,10 @@ const [holding, setHolding] = useState(false);
       // V24: keep PitchRoad alive even before holding (Smule-style live trace)
       if (stage === 'game' && !autoPaused && res && res.probability >= 0.6 && p > 0) {
         const now = performance.now();
-        const cents = hzToCentsDiff(p, targetFreq);
+        // Clamp cents for the road so the trace stays visible even when the user is far from the target note.
+        // Without this, values like -800..+800 cents go off-canvas and the road looks "not working".
+        const centsRaw = hzToCentsDiff(p, targetFreq);
+        const cents = clamp(centsRaw, -60, 60);
         const grade = gradeFromAbsCents(Math.abs(cents));
         tracePointsRef.current.push({ t: Date.now(), cents, grade });
         const cutoff = Date.now() - 8000;
