@@ -774,3 +774,93 @@ ul, ol { margin-top: 0; }
   border-radius: 18px;
   box-shadow: 0 18px 80px rgba(0,0,0,0.65);
 }
+
+/* V16 cover banner */
+.v5Cover{
+  width: 100%;
+  margin-top: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.35);
+}
+
+/* V16 Menu */
+.menuShell{
+  position: relative;
+  padding: 18px;
+  display: flex;
+  justify-content: center;
+}
+
+.menuBackdrop{
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(900px 500px at 55% 30%, rgba(120,140,255,0.18), rgba(0,0,0,0));
+  pointer-events: none;
+}
+
+.menuCard{
+  width: min(560px, 96vw);
+  border-radius: 22px;
+  padding: 14px;
+  background: rgba(20, 24, 32, 0.62);
+  border: 1px solid rgba(255,255,255,0.10);
+  box-shadow: 0 18px 80px rgba(0,0,0,0.45);
+  backdrop-filter: blur(12px);
+}
+
+.menuCover{
+  width: 100%;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.menuHead{
+  padding: 12px 8px 6px;
+  text-align: center;
+}
+
+.menuKicker{
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.menuTitle{
+  margin: 6px 0 2px;
+  font-size: 28px;
+}
+
+.menuSub{
+  opacity: 0.8;
+}
+
+.menuButtons{
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  padding: 10px 8px;
+}
+
+.menuPrimary,
+.menuSecondary{
+  width: 100%;
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-size: 16px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+}
+
+.menuPrimary{
+  background: rgba(96, 120, 255, 0.22);
+}
+
+.menuTip{
+  text-align: center;
+  font-size: 12px;
+  opacity: 0.7;
+  padding: 6px 8px 4px;
+}

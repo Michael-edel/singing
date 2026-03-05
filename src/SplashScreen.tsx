@@ -67,6 +67,8 @@ export default function SplashScreen({ onStart, statusText }: Props) {
           <p className="v5Subtitle">{t("splash.subtitle")}</p>
         </div>
 
+        <img className="v5Cover" src="/cover.jpg" alt="MiniVocalGame" />
+
         <div className="v5Actions">
           <button className="v5PrimaryBtn" onClick={handleStart} disabled={busy}>
             {busy ? t("splash.starting") : t("splash.start")}

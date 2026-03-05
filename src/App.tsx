@@ -4,11 +4,13 @@ import MiniVocalGame from "./MiniVocalGame";
 import SplashScreen from "./SplashScreen";
 import { AuthPanel } from "./components/AuthPanel";
 import { LeaderboardTable } from "./components/LeaderboardTable";
+import GameMenu from "./components/GameMenu";
 
 type User = { id: string; name?: string; email?: string; avatar?: string; provider?: string };
 
 export default function App() {
-  const [started, setStarted] = useState(false);
+  type Screen = "splash" | "menu" | "game";
+  const [screen, setScreen] = useState<Screen>("splash");
   const [user, setUser] = useState<User | null>(null);
 
   async function submitScore(payload: { score: number; accuracy: number }) {
@@ -41,7 +43,7 @@ export default function App() {
       </div>
 
       <AnimatePresence mode="wait">
-        {!started ? (
+        {screen === "splash" ? (
           <motion.div
             key="splash"
             initial={{ opacity: 0, y: 12 }}
@@ -49,7 +51,23 @@ export default function App() {
             exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.35 }}
           >
-            <SplashScreen onStart={() => setStarted(true)} />
+            <SplashScreen onStart={() => setScreen("menu")} />
+          </motion.div>
+        ) : screen === "menu" ? (
+          <motion.div
+            key="menu"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.35 }}
+          >
+            <GameMenu
+              onStart={() => setScreen("game")}
+              onLeaderboard={() => {
+                const el = document.querySelector(".bottomArea");
+                el?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+            />
           </motion.div>
         ) : (
           <motion.div

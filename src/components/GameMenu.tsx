@@ -1,28 +1,40 @@
-
 import { motion } from "framer-motion";
 
 type Props = {
   onStart: () => void;
-  onDaily: () => void;
   onLeaderboard: () => void;
 };
 
-export default function GameMenu({onStart,onDaily,onLeaderboard}:Props){
+export default function GameMenu({ onStart, onLeaderboard }: Props) {
   return (
-    <div className="menu">
-      <motion.h1
-        className="menuTitle"
-        initial={{opacity:0,y:-20}}
-        animate={{opacity:1,y:0}}
-      >
-        🎤 Vocal Pitch Challenge
-      </motion.h1>
+    <div className="menuShell">
+      <div className="menuBackdrop" aria-hidden />
 
-      <div className="menuButtons">
-        <button onClick={onStart}>▶ Start Singing</button>
-        <button onClick={onDaily}>🎯 Daily Challenge</button>
-        <button onClick={onLeaderboard}>🏆 Leaderboard</button>
-      </div>
+      <motion.div
+        className="menuCard"
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, ease: "easeOut" }}
+      >
+        <img className="menuCover" src="/cover.jpg" alt="MiniVocalGame cover" />
+
+        <div className="menuHead">
+          <div className="menuKicker">Jivoi Zvuk</div>
+          <h2 className="menuTitle">MiniVocalGame</h2>
+          <div className="menuSub">Vocal Pitch Challenge</div>
+        </div>
+
+        <div className="menuButtons">
+          <button className="menuPrimary" onClick={onStart} type="button">
+            ▶ Start Singing
+          </button>
+          <button className="menuSecondary" onClick={onLeaderboard} type="button">
+            🏆 Leaderboard
+          </button>
+        </div>
+
+        <div className="menuTip">Tip: allow microphone access for best latency.</div>
+      </motion.div>
     </div>
   );
 }
