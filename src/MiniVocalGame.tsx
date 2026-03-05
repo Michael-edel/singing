@@ -4,6 +4,7 @@ import { AccuracyRing } from './components/AccuracyRing';
 import { PitchRingSmule } from './components/PitchRingSmule';
 import { ScoreMeter } from './components/ScoreMeter';
 import PitchRoad, { type PitchGrade, type PitchPoint } from './components/PitchRoad';
+import { PitchEngine } from './audio/PitchEngine';
 import { useI18n } from './i18n';
 
 const TOTAL_ROUNDS = 5;
@@ -105,77 +106,6 @@ function hzToCentsDiff(freq: number, target: number): number {
   return 1200 * Math.log2(freq / target);
 }
 
-function rmsFromBuffer(buffer: Float32Array): number {
-  let sum = 0;
-  for (let i = 0; i < buffer.length; i += 1) sum += buffer[i] * buffer[i];
-  return Math.sqrt(sum / buffer.length);
-}
-
-type YinResult = { hz: number; probability: number } | null;
-
-/**
- * YIN pitch detection (time-domain). Better for vocal fundamental than FFT peak picking.
- * Returns null when pitch is not confident.
- */
-function yinPitch(
-  buffer: Float32Array,
-  sampleRate: number,
-  minHz = 80,
-  maxHz = 1000,
-  threshold = 0.15
-): YinResult {
-  const SIZE = buffer.length;
-  const minTau = Math.floor(sampleRate / maxHz);
-  const maxTau = Math.floor(sampleRate / minHz);
-  if (minTau < 2 || maxTau <= minTau + 2) return null;
-
-  const diff = new Float32Array(maxTau + 1);
-  const cmndf = new Float32Array(maxTau + 1);
-
-  for (let tau = 1; tau <= maxTau; tau += 1) {
-    let sum = 0;
-    for (let i = 0; i < SIZE - tau; i += 1) {
-      const d = buffer[i] - buffer[i + tau];
-      sum += d * d;
-    }
-    diff[tau] = sum;
-  }
-
-  cmndf[0] = 1;
-  let runningSum = 0;
-  for (let tau = 1; tau <= maxTau; tau += 1) {
-    runningSum += diff[tau];
-    cmndf[tau] = diff[tau] * (tau / (runningSum || 1e-12));
-  }
-
-  let tauEstimate = -1;
-  for (let tau = minTau; tau <= maxTau; tau += 1) {
-    if (cmndf[tau] < threshold) {
-      while (tau + 1 <= maxTau && cmndf[tau + 1] < cmndf[tau]) tau += 1;
-      tauEstimate = tau;
-      break;
-    }
-  }
-  if (tauEstimate === -1) return null;
-
-  // Parabolic interpolation for better accuracy
-  const x0 = tauEstimate - 1 >= 1 ? tauEstimate - 1 : tauEstimate;
-  const x2 = tauEstimate + 1 <= maxTau ? tauEstimate + 1 : tauEstimate;
-  const s0 = cmndf[x0];
-  const s1 = cmndf[tauEstimate];
-  const s2 = cmndf[x2];
-  const denom = 2 * s1 - s2 - s0;
-
-  let betterTau = tauEstimate;
-  if (denom !== 0) betterTau = tauEstimate + (s2 - s0) / (2 * denom);
-
-  const hz = sampleRate / betterTau;
-        const p = hz; // alias used by calibration/game logic
-  const probability = clamp(1 - cmndf[tauEstimate], 0, 1);
-
-  if (!Number.isFinite(hz) || hz <= 0) return null;
-  return { hz, probability };
-}
 
 function ema(prev: number | null, next: number, alpha = 0.25): number {
   if (prev == null) return next;
@@ -233,6 +163,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
+  const pitchEngineRef = useRef<PitchEngine | null>(null);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -286,18 +217,31 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
         audioBufferRef.current = new Float32Array(analyserRef.current.fftSize) as unknown as Float32Array<ArrayBuffer>;
       }
       const buffer = audioBufferRef.current;
-      analyserRef.current.getFloatTimeDomainData(buffer);
-      const rms = rmsFromBuffer(buffer);
-      const yin = rms >= 0.01 ? yinPitch(buffer, audioCtxRef.current.sampleRate) : null;
-      setConfidence(yin ? yin.probability : 0);
+      // Ensure we have an allocation-free pitch engine instance for this analyser size
+      if (!pitchEngineRef.current || pitchEngineRef.current.bufferSize !== analyserRef.current.fftSize) {
+        pitchEngineRef.current = new PitchEngine({
+          sampleRate: audioCtxRef.current.sampleRate,
+          bufferSize: analyserRef.current.fftSize,
+          minHz: 80,
+          maxHz: 1000,
+          threshold: 0.15,
+          minProbability: 0.7,
+          emaAlpha: 0.2,
+        });
+      }
 
-      let hz = 0;
-      if (yin && yin.probability >= 0.6) {
-        hz = stabilizeHz(smoothHzRef.current, yin.hz, 90);
-        hz = ema(smoothHzRef.current, hz, 0.25);
+      analyserRef.current.getFloatTimeDomainData(buffer);
+
+      const res = pitchEngineRef.current.process(buffer);
+      const rms = res?.rms ?? 0;
+      setConfidence(res ? res.probability : 0);
+
+      const hz = res ? res.hz : 0;
+      if (hz > 0) {
         smoothHzRef.current = hz;
       } else {
         smoothHzRef.current = null;
+        pitchEngineRef.current.resetSmoothing();
       }
 
       setPitch(hz);
