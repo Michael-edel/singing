@@ -59,6 +59,11 @@ export default function App() {
         {screen === "menu" && (
           <GameMenu
             onStart={() => setScreen("game")}
+            onLeaderboard={() => {
+              document
+                .querySelector(".bottomArea")
+                ?.scrollIntoView({ behavior: "smooth" });
+            }}
           />
         )}
 
