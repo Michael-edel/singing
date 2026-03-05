@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from "react";
+
+import React, { useMemo, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useI18n } from "./i18n";
 
@@ -11,6 +12,12 @@ export default function SplashScreen({ onStart, statusText }: Props) {
   const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [hint, setHint] = useState<string>("");
+  const [showIntro,setShowIntro]=useState(true);
+
+  useEffect(()=>{
+    const t=setTimeout(()=>setShowIntro(false),2600);
+    return ()=>clearTimeout(t);
+  },[]);
 
   const handleStart = async () => {
     try {
@@ -24,6 +31,16 @@ export default function SplashScreen({ onStart, statusText }: Props) {
   };
 
   const canShare = useMemo(() => typeof navigator !== "undefined" && !!(navigator as any).share, []);
+
+  if(showIntro){
+    return (
+      <div style={{position:"fixed",inset:0,background:"#000",display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <video autoPlay muted playsInline style={{width:"320px",maxWidth:"80vw"}}>
+          <source src="/logo_intro.mp4" type="video/mp4"/>
+        </video>
+      </div>
+    );
+  }
 
   return (
     <div className="v5Shell">
