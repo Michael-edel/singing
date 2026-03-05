@@ -53,6 +53,13 @@ const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', '
 
 const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
 
+const gradeFromScore = (score: number): LeaderRecord['grade'] => {
+  if (score >= 95) return 'perfect';
+  if (score >= 85) return 'great';
+  if (score >= 70) return 'good';
+  return 'bad';
+};
+
 
 function getCachedMicStream(): MediaStream | null {
   const w: any = window as any;
@@ -519,13 +526,33 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
     setStreak(count);
 
     const weekTag = `${new Date().getFullYear()}-W${Math.ceil(new Date().getDate() / 7)}`;
-    const boardRaw = JSON.parse(localStorage.getItem(BOARD_KEY) || '[]') as Array<LeaderRecord & { week: string }>;
-    const board = [...boardRaw, { id: `anon-${Math.random().toString(36).slice(2, 7)}`, score: Math.round(finalScore), week: weekTag }]
+    // Back-compat: older localStorage entries may contain only {id, score, week}.
+    const boardRaw = JSON.parse(localStorage.getItem(BOARD_KEY) || '[]') as Array<Partial<LeaderRecord> & { week?: string }>;
+    const normalized = boardRaw.map((x) => ({
+      id: String(x.id ?? `anon-${Math.random().toString(36).slice(2, 7)}`),
+      score: Number(x.score ?? 0),
+      grade: (x.grade ?? 'good') as LeaderRecord['grade'],
+      comboBonus: Number(x.comboBonus ?? 0),
+      combo: Number(x.combo ?? 0),
+      week: String((x as any).week ?? weekTag)
+    }));
+
+    const scored = Math.round(finalScore);
+    const entry = {
+      id: `anon-${Math.random().toString(36).slice(2, 7)}`,
+      score: scored,
+      grade: gradeFromScore(scored),
+      comboBonus: 0,
+      combo: 0,
+      week: weekTag
+    };
+
+    const board = [...normalized, entry]
       .filter((x) => x.week === weekTag)
       .sort((a, b) => b.score - a.score)
       .slice(0, 5);
     localStorage.setItem(BOARD_KEY, JSON.stringify(board));
-    setLeaderboard(board.map(({ id, score }) => ({ id, score })));
+    setLeaderboard(board.map(({ id, score, grade, comboBonus, combo }) => ({ id, score, grade, comboBonus, combo })));
 
     setStage('results');
   };
