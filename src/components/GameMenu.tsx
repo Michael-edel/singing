@@ -16,7 +16,10 @@ export default function GameMenu({ onStart, onLeaderboard }: Props) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45, ease: "easeOut" }}
       >
-        <img className="menuCover" src="/cover.jpg" alt="MiniVocalGame cover" />
+        <div className="menuHero">
+          <img className="menuHeroImg" src="/cover.jpg" alt="MiniVocalGame" />
+          <div className="menuHeroOverlay" aria-hidden />
+        </div>
 
         <div className="menuHead">
           <div className="menuKicker">Jivoi Zvuk</div>
@@ -33,7 +36,7 @@ export default function GameMenu({ onStart, onLeaderboard }: Props) {
           </button>
         </div>
 
-        <div className="menuTip">Tip: allow microphone access for best latency.</div>
+        <div className="menuTip">Tip: use headphones for best accuracy.</div>
       </motion.div>
     </div>
   );

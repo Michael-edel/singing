@@ -1,3 +1,4 @@
+html, body { overflow-x: hidden; }
 html, body {
   height: 100%;
 }
@@ -821,11 +822,32 @@ ul, ol { margin-top: 0; }
   backdrop-filter: blur(12px);
 }
 
-.menuCover{
+.menuHero{
+  position: relative;
   width: 100%;
+  height: 168px;
   border-radius: 18px;
+  overflow: hidden;
   border: 1px solid rgba(255,255,255,0.08);
 }
+.menuHeroImg{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 40%;
+  filter: saturate(0.85) contrast(1.05) brightness(0.92);
+  transform: scale(1.02);
+}
+.menuHeroOverlay{
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg,
+    rgba(0,0,0,0.15) 0%,
+    rgba(0,0,0,0.55) 70%,
+    rgba(0,0,0,0.75) 100%);
+}
+
+
 
 .menuHead{
   padding: 12px 8px 6px;
