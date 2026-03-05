@@ -148,6 +148,16 @@ export default {
     const path = url.pathname;
 
     // API routes
+
+    if (path === "/api/config" && request.method === "GET") {
+      const origin = url.origin;
+      return json({
+        googleClientId: env.GOOGLE_CLIENT_ID || env.googleClientId || null,
+        appleClientId: env.APPLE_CLIENT_ID || env.appleClientId || null,
+        appleRedirectUri: env.APPLE_REDIRECT_URI || env.appleRedirectUri || origin,
+      });
+    }
+
     if (path === "/api/me" && request.method === "GET") {
       const sess = await requireUser(request, env);
       if (!sess) return json({ user: null });

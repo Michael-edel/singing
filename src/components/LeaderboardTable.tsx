@@ -10,7 +10,7 @@ export type LeaderRow = {
   last_played_at: number | null;
 };
 
-export function LeaderboardTable() {
+export function LeaderboardTable({ currentUserId }: { currentUserId?: string | null }) {
   const { t } = useI18n();
   const [rows, setRows] = useState<LeaderRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -20,43 +20,49 @@ export function LeaderboardTable() {
       setLoading(true);
       const r = await fetch("/api/leaderboard", { credentials: "include" });
       const data = await r.json();
-      setRows(data.rows ?? []);
+      setRows(Array.isArray(data?.rows) ? data.rows : Array.isArray(data) ? data : []);
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    const id = window.setInterval(load, 15000);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
-    <div className="leaderCard">
-      <div className="leaderHeader">
-        <div className="leaderTitle">{t("lb.title")}</div>
-        <button className="btn subtle" onClick={load} disabled={loading}>{loading ? t("lb.loading") : t("lb.refresh")}</button>
+    <div className="leaderboardCard">
+      <div className="leaderboardHeader">
+        <div className="leaderboardTitle">{t("lb.title")}</div>
+        <button className="pillBtn subtle" onClick={load} disabled={loading}>
+          {t("lb.refresh")}
+        </button>
       </div>
 
-      <div className="leaderTable">
-        <div className="leaderRow head">
-          <div>#</div>
-          <div>{t("lb.player")}</div>
-          <div className="right">{t("lb.best")}</div>
+      {loading ? (
+        <div className="lbHint">{t("lb.loading")}</div>
+      ) : rows.length === 0 ? (
+        <div className="lbHint">{t("lb.empty")}</div>
+      ) : (
+        <div className="lbTable">
+          {rows.map((r) => {
+            const me = !!currentUserId && r.user_id === currentUserId;
+            return (
+              <div key={r.user_id} className={"lbRow" + (me ? " me" : "")}>
+                <div className="lbRank">{r.rank}</div>
+                <div className="lbUser">
+                  {r.avatar ? <img className="lbAvatar" src={r.avatar} alt="" /> : <div className="lbAvatar ph" />}
+                  <div className="lbName">{r.name || t("lb.anon")}</div>
+                </div>
+                <div className="lbScore">{r.best_score}</div>
+              </div>
+            );
+          })}
         </div>
-
-        {rows.map((r) => (
-          <div className="leaderRow" key={r.user_id}>
-            <div className="muted">{r.rank}</div>
-            <div className="playerCell">
-              {r.avatar ? <img className="avatar sm" src={r.avatar} alt="" /> : <div className="avatar sm ph" />}
-              <div className="playerName">{r.name ?? t("lb.anon")}</div>
-            </div>
-            <div className="right score">{r.best_score}</div>
-          </div>
-        ))}
-
-        {!rows.length && !loading ? (
-          <div className="empty">{t("lb.empty")}</div>
-        ) : null}
-      </div>
+      )}
     </div>
   );
 }

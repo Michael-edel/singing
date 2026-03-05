@@ -65,7 +65,7 @@ export default function App() {
       </AnimatePresence>
 
       <div className="bottomArea">
-        <LeaderboardTable />
+        <LeaderboardTable currentUserId={user?.id} />
       </div>
     </div>
   );

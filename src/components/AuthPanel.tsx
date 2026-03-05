@@ -8,6 +8,12 @@ type Props = {
   onUser: (u: User | null) => void;
 };
 
+type PublicConfig = {
+  googleClientId?: string;
+  appleClientId?: string;
+  appleRedirectUri?: string;
+};
+
 declare global {
   interface Window {
     google?: any;
@@ -15,158 +21,190 @@ declare global {
   }
 }
 
+function loadScript(src: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector(`script[src="${src}"]`);
+    if (existing) return resolve();
+    const s = document.createElement("script");
+    s.src = src;
+    s.async = true;
+    s.defer = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error(`Failed to load ${src}`));
+    document.head.appendChild(s);
+  });
+}
+
 export function AuthPanel({ user, onUser }: Props) {
   const { lang, setLang, t } = useI18n();
   const googleBtnRef = useRef<HTMLDivElement | null>(null);
-  const [busy, setBusy] = useState(false);
-  const googleRenderedRef = useRef(false);
 
-  async function refreshMe() {
-    try {
-      const r = await fetch("/api/me", { credentials: "include" });
-      if (!r.ok) return;
-      const data = await r.json();
-      onUser(data.user ?? null);
-    } catch {}
-  }
+  const [cfg, setCfg] = useState<PublicConfig>({});
+  const [err, setErr] = useState<string | null>(null);
+  const [loadingCfg, setLoadingCfg] = useState(true);
 
+  // Load public config from Worker (so we don't depend on VITE_* at build time)
   useEffect(() => {
-    refreshMe();
+    let alive = true;
+    (async () => {
+      try {
+        setLoadingCfg(true);
+        const r = await fetch("/api/config", { credentials: "include" });
+        const j = await r.json();
+        if (!alive) return;
+        setCfg(j || {});
+      } catch (e: any) {
+        if (!alive) return;
+        setErr(e?.message || String(e));
+      } finally {
+        if (alive) setLoadingCfg(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
   }, []);
 
-  // Google button
+  // Google button render
   useEffect(() => {
-    if (user) return;
-    if (googleRenderedRef.current) return;
-    const w = window as any;
-    if (!w.google?.accounts?.id || !googleBtnRef.current) return;
+    let cancelled = false;
+    (async () => {
+      if (!cfg.googleClientId) return;
+      if (!googleBtnRef.current) return;
 
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    if (!clientId) return;
+      try {
+        await loadScript("https://accounts.google.com/gsi/client");
+        if (cancelled) return;
 
-    w.google.accounts.id.initialize({
-      client_id: clientId,
-      callback: async (resp: any) => {
-        try {
-          setBusy(true);
-          const r = await fetch("/api/login/google", {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ credential: resp.credential }),
-          });
-          const data = await r.json();
-          onUser(data.user ?? null);
-        } finally {
-          setBusy(false);
-        }
-      },
-    });
+        const google = window.google;
+        if (!google?.accounts?.id) throw new Error("Google Identity Services not available");
 
-    w.google.accounts.id.renderButton(googleBtnRef.current, {
-      theme: "outline",
-      size: "large",
-      width: 260,
-      text: "continue_with",
-      shape: "pill",
-    });
+        google.accounts.id.initialize({
+          client_id: cfg.googleClientId,
+          callback: async (response: any) => {
+            try {
+              setErr(null);
+              const rr = await fetch("/api/login/google", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ credential: response.credential }),
+              });
+              const jj = await rr.json();
+              if (!rr.ok) throw new Error(jj?.error || "Google login failed");
+              onUser(jj.user || null);
+            } catch (e: any) {
+              setErr(e?.message || String(e));
+            }
+          },
+        });
 
-    googleRenderedRef.current = true;
-  }, [user]);
+        // Clear container and render official button
+        googleBtnRef.current.innerHTML = "";
+        google.accounts.id.renderButton(googleBtnRef.current, {
+          theme: "outline",
+          size: "large",
+          shape: "pill",
+          text: "signin_with",
+          width: 240,
+          locale: lang === "ru" ? "ru" : "en",
+        });
+      } catch (e: any) {
+        setErr(e?.message || String(e));
+      }
+    })();
 
-  async function loginApple() {
-    const clientId = import.meta.env.VITE_APPLE_CLIENT_ID;
-    const redirectURI = import.meta.env.VITE_APPLE_REDIRECT_URI;
-    if (!clientId || !redirectURI) {
-      alert(t("auth.apple.missing"));
-      return;
-    }
-    const w = window as any;
-    if (!w.AppleID?.auth) {
-      alert(t("auth.apple.sdk"));
-      return;
-    }
+    return () => {
+      cancelled = true;
+    };
+  }, [cfg.googleClientId, lang, onUser]);
 
+  // Apple click handler (loads script on demand)
+  async function signInApple() {
     try {
-      setBusy(true);
-      w.AppleID.auth.init({
-        clientId,
+      setErr(null);
+      if (!cfg.appleClientId || !cfg.appleRedirectUri) {
+        setErr(t("auth.apple_missing"));
+        return;
+      }
+
+      await loadScript("https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js");
+
+      if (!window.AppleID?.auth) throw new Error("AppleID JS not available");
+
+      // init must be called before signIn
+      window.AppleID.auth.init({
+        clientId: cfg.appleClientId,
         scope: "name email",
-        redirectURI,
+        redirectURI: cfg.appleRedirectUri,
         usePopup: true,
       });
 
-      const resp = await w.AppleID.auth.signIn();
-      const idToken = resp?.authorization?.id_token;
-      if (!idToken) throw new Error("Missing Apple id_token");
+      const data = await window.AppleID.auth.signIn();
+      const id_token = data?.authorization?.id_token;
+      if (!id_token) throw new Error("Apple did not return id_token");
 
-      const r = await fetch("/api/login/apple", {
+      const rr = await fetch("/api/login/apple", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ id_token: idToken }),
+        body: JSON.stringify({ id_token }),
       });
-      const data = await r.json();
-      onUser(data.user ?? null);
+      const jj = await rr.json();
+      if (!rr.ok) throw new Error(jj?.error || "Apple login failed");
+      onUser(jj.user || null);
     } catch (e: any) {
-      console.warn(e);
-      alert(t("auth.apple.failed"));
-    } finally {
-      setBusy(false);
+      setErr(e?.message || String(e));
     }
   }
 
   async function logout() {
     await fetch("/api/logout", { method: "POST", credentials: "include" });
     onUser(null);
-    googleRenderedRef.current = false;
   }
 
   return (
-    <div className="authCard">
-      {user ? (
-        <div className="authRow">
-          <div className="authUser">
-            {user.avatar ? <img className="avatar" src={user.avatar} alt="" /> : <div className="avatar ph" />}
-            <div>
-              <div className="authName">{user.name ?? t("auth.user")}</div>
-              <div className="authMeta">{user.provider ?? ""}{user.email ? ` • ${user.email}` : ""}</div>
-            </div>
-          </div>
-          <div className="authBtns">
-            <select
-              className="langSelect"
-              value={lang}
-              onChange={(e) => setLang(e.target.value as any)}
-              aria-label="Language"
-            >
-              <option value="ru">{t("lang.ru")}</option>
-              <option value="en">{t("lang.en")}</option>
-            </select>
-            <button className="btn subtle" onClick={logout} disabled={busy}>{t("auth.logout")}</button>
-          </div>
+    <div className="topBar">
+      <div className="authCard">
+        <div className="authText">
+          <div className="authTitle">{user ? t("auth.user") : t("auth.title")}</div>
+          <div className="authSub">{user ? (user.name || user.email || user.id) : t("auth.providers")}</div>
+          {err ? <div className="authErr">{err}</div> : null}
         </div>
-      ) : (
-        <div className="authRow">
-          <div>
-            <div className="authTitle">{t("auth.title")}</div>
-            <div className="authMeta">{t("auth.providers")}</div>
-          </div>
-          <div className="authBtns">
-            <div ref={googleBtnRef} />
-            <button className="btn apple" onClick={loginApple} disabled={busy}>{t("auth.apple")}</button>
-            <select
-              className="langSelect"
-              value={lang}
-              onChange={(e) => setLang(e.target.value as any)}
-              aria-label="Language"
-            >
-              <option value="ru">{t("lang.ru")}</option>
-              <option value="en">{t("lang.en")}</option>
-            </select>
-          </div>
+
+        <div className="authActions">
+          {user ? (
+            <button className="pillBtn subtle" onClick={logout}>
+              {t("auth.logout")}
+            </button>
+          ) : (
+            <>
+              <div className="googleWrap">
+                {loadingCfg && !cfg.googleClientId ? (
+                  <button className="pillBtn subtle" disabled>
+                    {t("auth.loading")}
+                  </button>
+                ) : cfg.googleClientId ? (
+                  <div ref={googleBtnRef} />
+                ) : (
+                  <button className="pillBtn subtle" disabled title="Set GOOGLE_CLIENT_ID in Worker secrets/vars">
+                    {t("auth.google_missing")}
+                  </button>
+                )}
+              </div>
+
+              <button className="pillBtn apple" onClick={signInApple}>
+                {t("auth.apple")}
+              </button>
+            </>
+          )}
+
+          <select className="langSelect" value={lang} onChange={(e) => setLang(e.target.value as any)} aria-label="Language">
+            <option value="ru">{t("lang.ru")}</option>
+            <option value="en">{t("lang.en")}</option>
+          </select>
         </div>
-      )}
+      </div>
     </div>
   );
 }
