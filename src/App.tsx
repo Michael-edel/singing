@@ -38,8 +38,8 @@ export default function App() {
 
   return (
     <div className={`appShell appShell--${screen}`}>
-      {screen !== "intro" ? (
-        <div className={`topArea ${screen === "game" ? "topAreaGame" : ""}`}>
+      {screen === "home" ? (
+        <div className="topArea">
           <AuthPanel user={user} onUser={setUser} />
         </div>
       ) : null}
@@ -65,10 +65,6 @@ export default function App() {
           >
             <HomeScreen
               onStart={() => setScreen("game")}
-              onLeaderboard={() => {
-                const el = document.querySelector(".bottomArea");
-                el?.scrollIntoView({ behavior: "smooth", block: "start" });
-              }}
             />
           </motion.div>
         ) : (

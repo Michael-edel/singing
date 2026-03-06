@@ -4,10 +4,9 @@ import { useI18n } from "../i18n";
 
 type Props = {
   onStart: () => void;
-  onLeaderboard: () => void;
 };
 
-export default function HomeScreen({ onStart, onLeaderboard }: Props) {
+export default function HomeScreen({ onStart }: Props) {
   const { t } = useI18n();
 
   return (
@@ -25,7 +24,6 @@ export default function HomeScreen({ onStart, onLeaderboard }: Props) {
         </div>
 
         <div className="homeHead">
-          <div className="homeKicker">Jivoi Zvuk</div>
           <h1 className="homeTitle">MiniVocalGame</h1>
           <div className="homeSub">{t("home.subtitle")}</div>
         </div>
@@ -35,9 +33,6 @@ export default function HomeScreen({ onStart, onLeaderboard }: Props) {
             🎤 {t("home.start")}
           </GlowButton>
 
-          <button type="button" className="homeLink" onClick={onLeaderboard}>
-            🏆 {t("home.leaderboard")}
-          </button>
 
           <div className="homeTip">{t("home.tip")}</div>
         </div>

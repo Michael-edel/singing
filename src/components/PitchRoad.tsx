@@ -35,7 +35,7 @@ export default function PitchRoad({ points, windowMs = 6000 }: Props) {
     const start = end - windowMs;
     return points
       .filter((p) => p.t >= start)
-      .map((p) => ({ ...p, cents: Math.max(-50, Math.min(50, p.cents)) }));
+      .map((p) => ({ ...p, cents: Math.max(-60, Math.min(60, p.cents)) }));
   }, [points, windowMs]);
 
   useEffect(() => {
@@ -47,7 +47,7 @@ export default function PitchRoad({ points, windowMs = 6000 }: Props) {
     const rect = canvas.getBoundingClientRect();
     const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
     const cssWidth = Math.max(280, Math.round(rect.width || 720));
-    const cssHeight = Math.max(120, Math.round(rect.height || 180));
+    const cssHeight = Math.max(128, Math.round(rect.height || 168));
     if (canvas.width !== cssWidth * dpr || canvas.height !== cssHeight * dpr) {
       canvas.width = cssWidth * dpr;
       canvas.height = cssHeight * dpr;
@@ -59,11 +59,11 @@ export default function PitchRoad({ points, windowMs = 6000 }: Props) {
     ctx.clearRect(0, 0, w, h);
 
     const mid = h / 2;
-    const centsToY = (c: number) => mid - c * (h / 120);
+    const centsToY = (c: number) => mid - c * (h / 140);
 
     const bands = [5, 15, 30, 50];
     ctx.lineWidth = 1;
-    ctx.strokeStyle = "rgba(255,255,255,0.10)";
+    ctx.strokeStyle = "rgba(255,255,255,0.12)";
     for (const b of bands) {
       ctx.beginPath();
       ctx.moveTo(0, centsToY(b));
@@ -76,15 +76,15 @@ export default function PitchRoad({ points, windowMs = 6000 }: Props) {
     }
 
     ctx.lineWidth = 2;
-    ctx.strokeStyle = "rgba(255,255,255,0.18)";
+    ctx.strokeStyle = "rgba(255,255,255,0.26)";
     ctx.beginPath();
     ctx.moveTo(0, mid);
     ctx.lineTo(w, mid);
     ctx.stroke();
 
     if (!normalized.length) {
-      ctx.fillStyle = "rgba(255,255,255,0.45)";
-      ctx.font = "14px system-ui, sans-serif";
+      ctx.fillStyle = "rgba(255,255,255,0.62)";
+      ctx.font = "600 14px system-ui, sans-serif";
       ctx.textAlign = "center";
       ctx.fillText("Пойте, чтобы увидеть линию попадания", w / 2, mid + 5);
       return;
@@ -106,22 +106,26 @@ export default function PitchRoad({ points, windowMs = 6000 }: Props) {
       return;
     }
 
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 5;
     ctx.lineCap = "round";
+    ctx.lineJoin = "round";
     for (let i = 1; i < normalized.length; i++) {
       const a = normalized[i - 1];
       const b = normalized[i];
       ctx.strokeStyle = colorFor(b.grade);
+      ctx.shadowColor = colorFor(b.grade);
+      ctx.shadowBlur = 10;
       ctx.beginPath();
       ctx.moveTo(xForT(a.t), centsToY(a.cents));
       ctx.lineTo(xForT(b.t), centsToY(b.cents));
       ctx.stroke();
     }
+    ctx.shadowBlur = 0;
 
     const last = normalized[normalized.length - 1];
     ctx.fillStyle = colorFor(last.grade);
     ctx.shadowColor = colorFor(last.grade);
-    ctx.shadowBlur = 14;
+    ctx.shadowBlur = 18;
     ctx.beginPath();
     ctx.arc(Math.max(8, Math.min(w - 8, xForT(last.t))), centsToY(last.cents), 5, 0, Math.PI * 2);
     ctx.fill();
