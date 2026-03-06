@@ -1795,3 +1795,220 @@ body {
   .introTitle { font-size: 38px; }
   .introSub { font-size: 15px; }
 }
+
+
+/* ===== V29 focused layout fixes ===== */
+html, body, #root {
+  min-height: 100%;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+.appShell {
+  min-height: 100dvh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(18px + env(safe-area-inset-top, 0px)) 18px calc(18px + env(safe-area-inset-bottom, 0px));
+}
+
+.homeStage, .gameStage, .introStage {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.homeStageStack {
+  width: min(760px, 100%);
+  margin: 0 auto;
+}
+
+.topBar, .homeShell, .leaderboardCard {
+  width: 100%;
+}
+
+.introOverlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  border: 0;
+  background: rgba(2, 3, 8, 0.95);
+}
+
+.introCard {
+  width: min(640px, 100%);
+  min-width: 0;
+}
+
+.homeShell {
+  display: flex;
+  justify-content: center;
+  padding: 0;
+}
+
+.homeCard {
+  width: min(760px, 100%);
+  margin: 0 auto;
+}
+
+.v5Shell {
+  min-height: 100dvh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 12px calc(12px + env(safe-area-inset-bottom, 0px));
+}
+
+.v5Card.v6GameCard {
+  width: min(1080px, 100%);
+}
+
+.v7GameGrid {
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  gap: 24px;
+}
+
+.v7Hud {
+  align-content: start;
+}
+
+.hudRow {
+  gap: 12px;
+}
+
+.badge {
+  min-height: 44px;
+}
+
+.pitchRoadWrap {
+  margin-top: 18px;
+}
+
+.pitchRoad {
+  height: 190px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04));
+  border: 1px solid rgba(255,255,255,0.12);
+}
+
+.pitchRoadLegend {
+  margin-top: 8px;
+  justify-content: center;
+}
+
+.hold {
+  width: 100%;
+  min-height: 58px;
+  font-size: 17px;
+}
+
+@media (max-width: 900px) {
+  .appShell {
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .homeStageStack {
+    width: min(520px, 100%);
+  }
+
+  .v5Shell {
+    align-items: flex-start;
+    justify-content: flex-start;
+  }
+
+  .v5Card.v6GameCard {
+    width: 100%;
+    max-width: 520px;
+  }
+
+  .v7GameGrid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .pitchRoad {
+    height: 150px;
+  }
+}
+
+@media (max-width: 560px) {
+  .appShell {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .authCard {
+    padding: 10px 12px;
+  }
+
+  .homeCard {
+    padding: 20px 16px 18px;
+    border-radius: 22px;
+  }
+
+  .homeTitle {
+    font-size: clamp(28px, 10vw, 42px);
+  }
+
+  .homeSub {
+    font-size: 15px;
+  }
+
+  .homeSpotlight {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .homePrimary {
+    min-height: 58px;
+    font-size: 18px;
+  }
+
+  .v5Card.v6GameCard {
+    padding: 12px;
+    border-radius: 22px;
+  }
+
+  .v6Section {
+    padding: 12px;
+  }
+
+  .v6Section > h2 {
+    font-size: 18px;
+    margin-bottom: 10px;
+  }
+
+  .pitchRoad {
+    height: 132px;
+  }
+
+  .pitchRoadLegend {
+    font-size: 10px;
+    gap: 8px;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .badge {
+    min-height: 38px;
+    font-size: 13px;
+  }
+
+  .hold {
+    min-height: 52px;
+    font-size: 15px;
+  }
+}
