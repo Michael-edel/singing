@@ -13,8 +13,6 @@ type Props = {
   windowMs?: number; // default 6000
 };
 
-// Smule-style pitch road: target line in the middle (0 cents),
-// player trace as colored segments by grade.
 export default function PitchRoad({ points, windowMs = 6000 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -22,7 +20,9 @@ export default function PitchRoad({ points, windowMs = 6000 }: Props) {
     if (!points.length) return [] as PitchPoint[];
     const end = points[points.length - 1].t;
     const start = end - windowMs;
-    return points.filter((p) => p.t >= start);
+    return points
+      .filter((p) => p.t >= start)
+      .map((p) => ({ ...p, cents: Math.max(-50, Math.min(50, p.cents)) }));
   }, [points, windowMs]);
 
   useEffect(() => {
@@ -36,16 +36,23 @@ export default function PitchRoad({ points, windowMs = 6000 }: Props) {
     ctx.clearRect(0, 0, w, h);
 
     const mid = h / 2;
-    const centsToY = (c: number) => {
-      const clamped = Math.max(-60, Math.min(60, c));
-      return mid - clamped * 2;
-    }; // scale + clamp for visibility
+    const centsToY = (c: number) => mid - c * 2;
+    const colorFor = (g: PitchGrade) => {
+      switch (g) {
+        case "perfect":
+          return "rgba(255,215,0,0.95)";
+        case "great":
+          return "rgba(0,255,213,0.95)";
+        case "good":
+          return "rgba(135,206,235,0.95)";
+        default:
+          return "rgba(255,99,71,0.90)";
+      }
+    };
 
-    // guide bands (+/- 5, 15, 30 cents)
-    const bands = [5, 15, 30];
     ctx.lineWidth = 1;
     ctx.strokeStyle = "rgba(255,255,255,0.10)";
-    for (const b of bands) {
+    for (const b of [5, 15, 30]) {
       ctx.beginPath();
       ctx.moveTo(0, centsToY(b));
       ctx.lineTo(w, centsToY(b));
@@ -56,7 +63,6 @@ export default function PitchRoad({ points, windowMs = 6000 }: Props) {
       ctx.stroke();
     }
 
-    // target line (0 cents)
     ctx.lineWidth = 2;
     ctx.strokeStyle = "rgba(255,255,255,0.18)";
     ctx.beginPath();
@@ -64,47 +70,47 @@ export default function PitchRoad({ points, windowMs = 6000 }: Props) {
     ctx.lineTo(w, mid);
     ctx.stroke();
 
-    if (normalized.length < 2) return;
+    if (!normalized.length) {
+      ctx.fillStyle = "rgba(255,255,255,0.45)";
+      ctx.font = "14px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("Пойте, чтобы увидеть линию попадания", w / 2, mid + 5);
+      return;
+    }
 
     const endT = normalized[normalized.length - 1].t;
     const startT = endT - windowMs;
     const xForT = (t: number) => ((t - startT) / windowMs) * w;
 
-    const colorFor = (g: PitchGrade) => {
-      switch (g) {
-        case "perfect":
-          return "rgba(255,215,0,0.95)"; // gold
-        case "great":
-          return "rgba(0,255,213,0.95)"; // teal
-        case "good":
-          return "rgba(135,206,235,0.95)"; // sky
-        default:
-          return "rgba(255,99,71,0.90)"; // tomato
-      }
-    };
+    if (normalized.length === 1) {
+      const only = normalized[0];
+      ctx.fillStyle = colorFor(only.grade);
+      ctx.beginPath();
+      ctx.arc(xForT(only.t), centsToY(only.cents), 5, 0, Math.PI * 2);
+      ctx.fill();
+      return;
+    }
 
-    // draw colored segments
     ctx.lineWidth = 4;
     ctx.lineCap = "round";
     for (let i = 1; i < normalized.length; i++) {
       const a = normalized[i - 1];
       const b = normalized[i];
-      const x1 = xForT(a.t);
-      const y1 = centsToY(a.cents);
-      const x2 = xForT(b.t);
-      const y2 = centsToY(b.cents);
       ctx.strokeStyle = colorFor(b.grade);
       ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
+      ctx.moveTo(xForT(a.t), centsToY(a.cents));
+      ctx.lineTo(xForT(b.t), centsToY(b.cents));
       ctx.stroke();
     }
-    const lastPoint = normalized[normalized.length - 1];
-    ctx.fillStyle = colorFor(lastPoint.grade);
-    ctx.beginPath();
-    ctx.arc(xForT(lastPoint.t), centsToY(lastPoint.cents), 4.5, 0, Math.PI * 2);
-    ctx.fill();
 
+    const last = normalized[normalized.length - 1];
+    ctx.fillStyle = colorFor(last.grade);
+    ctx.shadowColor = colorFor(last.grade);
+    ctx.shadowBlur = 14;
+    ctx.beginPath();
+    ctx.arc(xForT(last.t), centsToY(last.cents), 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
   }, [normalized, windowMs]);
 
   return (

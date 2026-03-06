@@ -180,7 +180,7 @@ const [holding, setHolding] = useState(false);
   const hzRingIdxRef = useRef(0);
   const hzRingCountRef = useRef(0);
   const emaHzRef = useRef<number | null>(null);
-  const audioBufferRef = useRef<Float32Array<ArrayBuffer> | null>(null);
+  const audioBufferRef = useRef<Parameters<AnalyserNode['getFloatTimeDomainData']>[0] | null>(null);
 
   const calibCollectedRef = useRef<number[]>([]);
   const calibStartRef = useRef<number>(0);
@@ -226,7 +226,7 @@ const [holding, setHolding] = useState(false);
     const tick = () => {
       if (!analyserRef.current || !audioCtxRef.current) return;
       if (!audioBufferRef.current || audioBufferRef.current.length !== analyserRef.current.fftSize) {
-        audioBufferRef.current = new Float32Array(analyserRef.current.fftSize) as unknown as Float32Array<ArrayBuffer>;
+        audioBufferRef.current = new Float32Array(analyserRef.current.fftSize) as Parameters<AnalyserNode['getFloatTimeDomainData']>[0];
       }
       const buffer = audioBufferRef.current;
       // Ensure we have an allocation-free pitch engine instance for this analyser size
@@ -352,6 +352,7 @@ const [holding, setHolding] = useState(false);
           finishRound();
         }
       }
+
       rafRef.current = requestAnimationFrame(tick);
     };
 

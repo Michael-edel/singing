@@ -20,7 +20,7 @@ export default function IntroScreen({ onDone }: Props) {
       exit={{ opacity: 0 }}
       transition={{ duration: 0.35 }}
     >
-      <video className="introVideo" autoPlay muted playsInline>
+      <video className="introVideo" autoPlay muted playsInline preload="auto">
         <source src="/logo_intro.mp4" type="video/mp4" />
       </video>
     </motion.button>

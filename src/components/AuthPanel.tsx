@@ -101,12 +101,13 @@ export function AuthPanel({ user, onUser }: Props) {
 
         // Clear container and render official button
         googleBtnRef.current.innerHTML = "";
+        const width = Math.min(240, Math.max(180, window.innerWidth - 170));
         google.accounts.id.renderButton(googleBtnRef.current, {
           theme: "outline",
-          size: window.innerWidth <= 768 ? "medium" : "large",
+          size: "large",
           shape: "pill",
           text: "signin_with",
-          width: Math.min(window.innerWidth <= 768 ? 180 : 240, Math.max(160, window.innerWidth - 180)),
+          width,
           locale: lang === "ru" ? "ru" : "en",
         });
       } catch (e: any) {

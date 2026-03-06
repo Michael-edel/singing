@@ -37,10 +37,12 @@ export default function App() {
   }, []);
 
   return (
-    <div className="appShell">
-      <div className="topArea">
-        <AuthPanel user={user} onUser={setUser} />
-      </div>
+    <div className={`appShell appShell--${screen}`}>
+      {screen !== "intro" ? (
+        <div className={`topArea ${screen === "game" ? "topAreaGame" : ""}`}>
+          <AuthPanel user={user} onUser={setUser} />
+        </div>
+      ) : null}
 
       <AnimatePresence mode="wait">
         {screen === "intro" ? (
