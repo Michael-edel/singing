@@ -137,6 +137,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
   const [range, setRange] = useState<{ low: number; high: number }>({ low: 165, high: 440 });
   const [micReady, setMicReady] = useState(false);
   const [showAdvancedSetup, setShowAdvancedSetup] = useState(false);
+  const [hasCalibration, setHasCalibration] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(() => {
     try { return localStorage.getItem('mv_onboard_v21') !== '1'; } catch { return true; }
   });
@@ -301,8 +302,9 @@ const [holding, setHolding] = useState(false);
       // V24: keep PitchRoad alive even before holding (Smule-style live trace)
       if (stage === 'game' && !autoPaused && res && res.probability >= 0.6 && p > 0) {
         const now = performance.now();
-        const cents = hzToCentsDiff(p, targetFreq);
-        const grade = gradeFromAbsCents(Math.abs(cents));
+        const centsRaw = hzToCentsDiff(p, targetFreq);
+        const cents = clamp(centsRaw, -50, 50);
+        const grade = gradeFromAbsCents(Math.abs(centsRaw));
         tracePointsRef.current.push({ t: Date.now(), cents, grade });
         const cutoff = Date.now() - 8000;
         if (tracePointsRef.current.length > 500) {
@@ -352,7 +354,6 @@ const [holding, setHolding] = useState(false);
           finishRound();
         }
       }
-
       rafRef.current = requestAnimationFrame(tick);
     };
 
@@ -363,6 +364,10 @@ const [holding, setHolding] = useState(false);
   const startGameFromSetup = async () => {
     if (!micReady) {
       await connectMic();
+    }
+    if (!hasCalibration) {
+      beginCalibration();
+      return;
     }
     setStage('game');
     prepareRound(0);
@@ -432,6 +437,7 @@ const [holding, setHolding] = useState(false);
           setCalibLeftMs(CALIBRATION_MS);
         } else {
           setCalibStep('done');
+          setHasCalibration(true);
           setStage('game');
           prepareRound(0);
         }
@@ -673,8 +679,8 @@ const shareToStories = async () => {
   return (
     <div className="v5Shell v6Shell">
       <div className="v5Backdrop" aria-hidden />
-      <div className="v5Card v6GameCard">
-      <h1>MiniVocalGame — вокальный челлендж</h1>
+      <div className={`v5Card v6GameCard ${stage === 'game' ? 'v6GameCard--play' : ''}`}>
+      {stage !== 'game' ? <h1>MiniVocalGame — вокальный челлендж</h1> : null}
 
 {showOnboarding && stage === 'game' && roundIndex === 0 ? (
         <div className="onboardOverlay" role="dialog" aria-modal="true">
@@ -705,6 +711,7 @@ const shareToStories = async () => {
         <section className="homeGameSetup">
           <div className="homeGameTitle">🎤 MiniVocalGame</div>
           <div className="homeGameSubtitle">Пой в ноту. Получай ⭐. Делись результатом.</div>
+          <div className="homeGameHint">При первом старте игра сначала попросит откалибровать диапазон голоса.</div>
 
           <div className="homeGamePrimary">
             <button
@@ -778,7 +785,7 @@ const shareToStories = async () => {
                 <div className="badge">{t('hud.live')}: <strong>{Math.round(pitch) || 0} Hz</strong></div>
                 <div className="badge">{t('hud.target')}: <strong>{freqToNote(targetFreq)}</strong></div>
                 <button className="badge btn" onClick={playReferenceTone} title={t('hud.playTone')}>🔊 {t('hud.playTone')}</button>
-                <div className="badge">⭐ <strong>{'⭐'.repeat(liveStars)}{'☆'.repeat(Math.max(0, 5 - liveStars))}</strong></div>
+                <div className="badge"><strong>{'⭐'.repeat(liveStars)}{'☆'.repeat(Math.max(0, 5 - liveStars))}</strong></div>
               </div>
 
               {holding ? (
