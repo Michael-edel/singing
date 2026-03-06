@@ -24,7 +24,6 @@ export default function App() {
     } catch {}
   }
 
-  // keep user fresh after refresh
   useEffect(() => {
     (async () => {
       try {
@@ -38,53 +37,46 @@ export default function App() {
 
   return (
     <div className={`appShell appShell--${screen}`}>
-      {screen === "home" ? (
-        <div className="topArea">
-          <AuthPanel user={user} onUser={setUser} />
-        </div>
-      ) : null}
-
       <AnimatePresence mode="wait">
         {screen === "intro" ? (
           <motion.div
             key="intro"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.35 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="introStage"
           >
             <IntroScreen onDone={() => setScreen("home")} />
           </motion.div>
         ) : screen === "home" ? (
           <motion.div
             key="home"
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.35 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.3 }}
+            className="homeStage"
           >
-            <HomeScreen
-              onStart={() => setScreen("game")}
-            />
+            <div className="homeStageStack">
+              <AuthPanel user={user} onUser={setUser} />
+              <HomeScreen onStart={() => setScreen("game")} />
+              <LeaderboardTable currentUserId={user?.id} />
+            </div>
           </motion.div>
         ) : (
           <motion.div
             key="game"
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.35 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.3 }}
+            className="gameStage"
           >
             <MiniVocalGame user={user} onSubmitScore={submitScore} />
           </motion.div>
         )}
       </AnimatePresence>
-
-      {screen !== "game" ? (
-        <div className="bottomArea">
-          <LeaderboardTable currentUserId={user?.id} />
-        </div>
-      ) : null}
     </div>
   );
 }
