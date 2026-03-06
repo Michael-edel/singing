@@ -82,9 +82,11 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <div className="bottomArea">
-        <LeaderboardTable currentUserId={user?.id} />
-      </div>
+      {screen !== "game" ? (
+        <div className="bottomArea">
+          <LeaderboardTable currentUserId={user?.id} />
+        </div>
+      ) : null}
     </div>
   );
 }

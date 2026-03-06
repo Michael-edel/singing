@@ -36,7 +36,10 @@ export default function PitchRoad({ points, windowMs = 6000 }: Props) {
     ctx.clearRect(0, 0, w, h);
 
     const mid = h / 2;
-    const centsToY = (c: number) => mid - c * 2; // scale
+    const centsToY = (c: number) => {
+      const clamped = Math.max(-60, Math.min(60, c));
+      return mid - clamped * 2;
+    }; // scale + clamp for visibility
 
     // guide bands (+/- 5, 15, 30 cents)
     const bands = [5, 15, 30];
@@ -96,6 +99,12 @@ export default function PitchRoad({ points, windowMs = 6000 }: Props) {
       ctx.lineTo(x2, y2);
       ctx.stroke();
     }
+    const lastPoint = normalized[normalized.length - 1];
+    ctx.fillStyle = colorFor(lastPoint.grade);
+    ctx.beginPath();
+    ctx.arc(xForT(lastPoint.t), centsToY(lastPoint.cents), 4.5, 0, Math.PI * 2);
+    ctx.fill();
+
   }, [normalized, windowMs]);
 
   return (

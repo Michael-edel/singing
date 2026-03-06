@@ -2,7 +2,7 @@
 # 🎤 MiniVocalGame
 ### Vocal Pitch Challenge by **Jivoi Zvuk**
 
-**Current Version:** `V24` (package `0.22.0`)
+**Current Version:** `V24.2` (package `0.22.0`)
 
 Interactive web game that tests how accurately you can sing a musical note.
 

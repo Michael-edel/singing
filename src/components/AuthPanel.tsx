@@ -103,10 +103,10 @@ export function AuthPanel({ user, onUser }: Props) {
         googleBtnRef.current.innerHTML = "";
         google.accounts.id.renderButton(googleBtnRef.current, {
           theme: "outline",
-          size: "large",
+          size: window.innerWidth <= 768 ? "medium" : "large",
           shape: "pill",
           text: "signin_with",
-          width: 240,
+          width: Math.min(window.innerWidth <= 768 ? 180 : 240, Math.max(160, window.innerWidth - 180)),
           locale: lang === "ru" ? "ru" : "en",
         });
       } catch (e: any) {

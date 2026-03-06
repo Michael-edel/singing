@@ -134,6 +134,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
   const [difficulty, setDifficulty] = useState<Difficulty>('newbie');
   const [calibStep, setCalibStep] = useState<CalibStep>('low');
   const [calibLeftMs, setCalibLeftMs] = useState(CALIBRATION_MS);
+  const [isCalibrated, setIsCalibrated] = useState(false);
   const [range, setRange] = useState<{ low: number; high: number }>({ low: 165, high: 440 });
   const [micReady, setMicReady] = useState(false);
   const [showAdvancedSetup, setShowAdvancedSetup] = useState(false);
@@ -301,11 +302,9 @@ const [holding, setHolding] = useState(false);
       // V24: keep PitchRoad alive even before holding (Smule-style live trace)
       if (stage === 'game' && !autoPaused && res && res.probability >= 0.6 && p > 0) {
         const now = performance.now();
-        // Clamp cents for the road so the trace stays visible even when the user is far from the target note.
-        // Without this, values like -800..+800 cents go off-canvas and the road looks "not working".
         const centsRaw = hzToCentsDiff(p, targetFreq);
         const cents = clamp(centsRaw, -60, 60);
-        const grade = gradeFromAbsCents(Math.abs(cents));
+        const grade = gradeFromAbsCents(Math.abs(centsRaw));
         tracePointsRef.current.push({ t: Date.now(), cents, grade });
         const cutoff = Date.now() - 8000;
         if (tracePointsRef.current.length > 500) {
@@ -365,6 +364,10 @@ const [holding, setHolding] = useState(false);
   const startGameFromSetup = async () => {
     if (!micReady) {
       await connectMic();
+    }
+    if (!isCalibrated) {
+      beginCalibration();
+      return;
     }
     setStage('game');
     prepareRound(0);
@@ -434,6 +437,7 @@ const [holding, setHolding] = useState(false);
           setCalibLeftMs(CALIBRATION_MS);
         } else {
           setCalibStep('done');
+          setIsCalibrated(true);
           setStage('game');
           prepareRound(0);
         }
@@ -469,8 +473,7 @@ const [holding, setHolding] = useState(false);
     silenceStartRef.current = 0;
     centsSamplesRef.current = [];
     totalSilentMsRef.current = 0;
-    tracePointsRef.current = [];
-    setPitchRoadPoints([]);
+    // preserve live road trace when holding starts
   };
 
   const finishRound = () => {
@@ -715,10 +718,10 @@ const shareToStories = async () => {
               onClick={() => startGameFromSetup()}
             >
               <span className="homeGameMicIcon">🎙️</span>
-              <span className="homeGameMicText">{micReady ? "Начать игру" : "Включить микрофон"}</span>
+              <span className="homeGameMicText">{micReady ? (isCalibrated ? "Начать игру" : "Калибровка и старт") : "Включить микрофон"}</span>
             </button>
             <div className="homeGameHint">
-              {micReady ? "Готово! Нажмите, чтобы начать." : "При первом запуске нужно разрешить доступ к микрофону."}
+              {micReady ? (isCalibrated ? "Готово! Можно начинать игру." : "Сейчас запустится быстрая калибровка диапазона.") : "При первом запуске нужно разрешить доступ к микрофону."}
             </div>
           </div>
 
@@ -780,7 +783,7 @@ const shareToStories = async () => {
                 <div className="badge">{t('hud.live')}: <strong>{Math.round(pitch) || 0} Hz</strong></div>
                 <div className="badge">{t('hud.target')}: <strong>{freqToNote(targetFreq)}</strong></div>
                 <button className="badge btn" onClick={playReferenceTone} title={t('hud.playTone')}>🔊 {t('hud.playTone')}</button>
-                <div className="badge">⭐ <strong>{'⭐'.repeat(liveStars)}{'☆'.repeat(Math.max(0, 5 - liveStars))}</strong></div>
+                <div className="badge starsBadge"><strong>{'⭐'.repeat(liveStars)}{'☆'.repeat(Math.max(0, 5 - liveStars))}</strong></div>
               </div>
 
               {holding ? (
