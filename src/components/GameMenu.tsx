@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { useI18n } from "../i18n";
 
 type Props = {
   onStart: () => void;
@@ -6,6 +7,7 @@ type Props = {
 };
 
 export default function GameMenu({ onStart, onLeaderboard }: Props) {
+  const { t } = useI18n();
   return (
     <div className="menuShell">
       <div className="menuBackdrop" aria-hidden />
@@ -19,21 +21,21 @@ export default function GameMenu({ onStart, onLeaderboard }: Props) {
         <img className="menuCover" src="/cover.jpg" alt="MiniVocalGame cover" />
 
         <div className="menuHead">
-          <div className="menuKicker">Jivoi Zvuk</div>
+          <div className="menuKicker">{t("menu.kicker")}</div>
           <h2 className="menuTitle">MiniVocalGame</h2>
-          <div className="menuSub">Vocal Pitch Challenge</div>
+          <div className="menuSub">{t("menu.subtitle")}</div>
         </div>
 
         <div className="menuButtons">
           <button className="menuPrimary" onClick={onStart} type="button">
-            ▶ Start Singing
+            ▶ {t("menu.start")}
           </button>
           <button className="menuSecondary" onClick={onLeaderboard} type="button">
-            🏆 Leaderboard
+            🏆 {t("menu.leaderboard")}
           </button>
         </div>
 
-        <div className="menuTip">Tip: allow microphone access for best latency.</div>
+        <div className="menuTip">{t("menu.tip")}</div>
       </motion.div>
     </div>
   );

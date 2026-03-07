@@ -445,7 +445,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
             totalSilentMsRef.current += now - silenceStartRef.current;
             pauseStartedAtRef.current = now;
             setAutoPaused(true);
-            setPauseMsg('Автопауза: звук пропал более 1 секунды. Нажмите «Продолжить».');
+            setPauseMsg(t('game.autopause'));
           }
         } else {
           silenceStartRef.current = 0;
@@ -567,7 +567,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
         if (!captured) {
           setCalibrationPreview(null);
           setCalibrationPhase('intro');
-          setCalibrationError('Калибровка не удалась. Пойте громче и стабильнее.');
+          setCalibrationError(t('game.calibration.failed'));
           return;
         }
 
@@ -586,7 +586,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
           setCalibrationPreview(null);
           setCalibrationPhase('intro');
           setCalibStep('low');
-          setCalibrationError('Диапазон определён неверно. Повторите калибровку громче и ровнее.');
+          setCalibrationError(t('game.calibration.invalid'));
           return;
         }
 
@@ -779,8 +779,9 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
     onSubmitScore({ score: Math.round(finalScore), accuracy: finalAccuracy });
   }, [stage, onSubmitScore, finalScore, finalAccuracy]);
 
-  const level = levelFromScore(finalScore);
-  const volumeHint = volume < 0.012 ? 'Слишком тихо' : volume > 0.11 ? 'Слишком громко' : 'Нормальный уровень';
+  const levelKey = finalScore >= 85 ? 'pro' : finalScore >= 60 ? 'mid' : 'newbie';
+  const level = t(`game.level.${levelKey}`);
+  const volumeHint = volume < 0.012 ? t('game.volume.low') : volume > 0.11 ? t('game.volume.high') : t('game.volume.ok');
 
   const utmUrl = useMemo(() => {
     const params = new URLSearchParams({
@@ -792,13 +793,8 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
     return `https://www.instagram.com/vocal.jivoizvuk.ekb/?${params.toString()}`;
   }, [template]);
 
-  const dmText = encodeURIComponent(`Привет! Я прошёл Mini Vocal Challenge, получил ${finalScore} (${level}). Хочу разбор и план роста 🎤`);
-  const offer =
-    level === 'Новичок'
-      ? 'Оффер: диагностика + базовый план за 20 минут.'
-      : level === 'Средний'
-      ? 'Оффер: персональный апгрейд диапазона и стабильности.'
-      : 'Оффер: прокачка артистизма + запись демо-куплета.';
+  const dmText = encodeURIComponent(`${t('game.results.dmText')} 🎤`);
+  const offer = levelKey === 'newbie' ? t('game.offer.newbie') : levelKey === 'mid' ? t('game.offer.mid') : t('game.offer.pro');
 
   const generateCardBlob = async (): Promise<Blob> => {
     const canvas = document.createElement('canvas');
@@ -831,9 +827,9 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
     ctx.font = 'bold 80px sans-serif';
     ctx.fillText(level, 90, 640);
     ctx.font = '42px sans-serif';
-    ctx.fillText('Add Yours: "Мой вокальный уровень"', 90, 760);
+    ctx.fillText(t('game.share.addyours'), 90, 760);
     ctx.fillText('@vocal.jivoizvuk.ekb', 90, 840);
-    ctx.fillText('Добавь link sticker:', 90, 920);
+    ctx.fillText(t('game.share.linksticker'), 90, 920);
     ctx.fillText(utmUrl, 90, 980);
 
     return await new Promise((resolve, reject) => {
@@ -842,7 +838,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
   };
 
   const shareResultText = async () => {
-    const text = `🎤 Мой результат: ${finalScore} (${level}). Сможешь лучше?`;
+    const text = `🎤 MiniVocalGame: ${finalScore} (${level}).`;
     if (navigator.share) {
       try {
         await navigator.share({ title: 'MiniVocalGame', text, url: window.location.href });
@@ -851,7 +847,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
     }
     try {
       await navigator.clipboard.writeText(`${text} ${utmUrl}`);
-      alert('Текст результата скопирован в буфер обмена.');
+      alert(t('game.share.copied'));
     } catch {
       alert(text);
     }
@@ -860,7 +856,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
   const shareToStories = async () => {
     const blob = await generateCardBlob();
     const file = new File([blob], 'mini-vocal-result.png', { type: 'image/png' });
-    const shareData: ShareData = { files: [file], text: `Мой результат: ${finalScore} (${level})` };
+    const shareData: ShareData = { files: [file], text: `MiniVocalGame: ${finalScore} (${level})` };
 
     if (navigator.canShare && navigator.canShare(shareData) && navigator.share) {
       await navigator.share(shareData);
@@ -875,10 +871,10 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
     URL.revokeObjectURL(url);
 
     try {
-      await navigator.clipboard.writeText(`Сторис текст: Мой результат ${finalScore} (${level}). Link: ${utmUrl}`);
-      alert('PNG скачан. Текст скопирован в буфер. Опубликуйте в IG Stories вручную.');
+      await navigator.clipboard.writeText(`MiniVocalGame: ${finalScore} (${level}). Link: ${utmUrl}`);
+      alert(t('game.share.pngCopied'));
     } catch {
-      alert('PNG скачан. Опубликуйте в IG Stories вручную.');
+      alert(t('game.share.pngSaved'));
     }
   };
 
@@ -917,16 +913,16 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
     <div className="v5Shell v6Shell">
       <div className="v5Backdrop" aria-hidden />
       <div className={`v5Card v6GameCard ${stage === 'game' ? 'v6GameCard--play' : ''}`}>
-        {stage !== 'game' ? <h1>MiniVocalGame — вокальный челлендж</h1> : null}
+        {stage !== 'game' ? <h1>{t('game.title')}</h1> : null}
 
         {showOnboarding && stage === 'game' && roundIndex === 0 ? (
           <div className="onboardOverlay" role="dialog" aria-modal="true">
             <div className="onboardCard">
-              <div className="onboardTitle">Как играть</div>
+              <div className="onboardTitle">{t('game.onboarding.title')}</div>
               <ol className="onboardSteps">
-                <li>Нажмите <b>«Включить микрофон»</b> и разрешите доступ.</li>
-                <li>Нажмите и удерживайте <b>«Удерживать ноту»</b>.</li>
-                <li>Пойте ноту <b>{freqToNote(targetFreq)}</b> около <b>{Math.round(ROUND_MS / 1000)} сек</b> — получите ⭐ и очки.</li>
+                <li>{t('game.setup.micOn')}.</li>
+                <li>{t('game.hold')}.</li>
+                <li>{t('game.onboarding.step3a')} <b>{freqToNote(targetFreq)}</b> {t('game.onboarding.step3b')} <b>{Math.round(ROUND_MS / 1000)}</b> {t('game.onboarding.step3c')}</li>
               </ol>
               <div className="onboardActions">
                 <button
@@ -936,7 +932,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
                     setShowOnboarding(false);
                   }}
                 >
-                  Понятно
+                  {t('game.onboarding.ok')}
                 </button>
               </div>
             </div>
@@ -946,22 +942,22 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
         {stage === 'setup' && (
           <section className="homeGameSetup">
             <div className="homeGameTitle">🎤 MiniVocalGame</div>
-            <div className="homeGameSubtitle">Пой в ноту. Получай ⭐. Делись результатом.</div>
-            <div className="homeGameHint">При первом старте игра сначала попросит откалибровать диапазон голоса.</div>
+            <div className="homeGameSubtitle">{t('game.setup.subtitle')}</div>
+            <div className="homeGameHint">{t('game.setup.firstHint')}</div>
             {calibrationError ? <div className="warning calibrationWarning">{calibrationError}</div> : null}
 
             <div className="homeGamePrimary">
               <button className="homeGameMicBtn" type="button" onClick={() => moveToDifficulty()}>
                 <span className="homeGameMicIcon">🎙️</span>
-                <span className="homeGameMicText">{micReady ? 'Дальше' : 'Включить микрофон'}</span>
+                <span className="homeGameMicText">{micReady ? t('game.setup.next') : t('game.setup.micOn')}</span>
               </button>
               <div className="homeGameHint">
-                {micReady ? 'Микрофон готов. Дальше будет выбор сложности и калибровка.' : 'При первом запуске нужно разрешить доступ к микрофону.'}
+                {micReady ? t('game.setup.micReadyHint') : t('game.setup.micNeedHint')}
               </div>
             </div>
 
             <button type="button" className="homeGameAdvancedToggle" onClick={() => setShowAdvancedSetup((v: boolean) => !v)}>
-              {showAdvancedSetup ? 'Скрыть настройки' : 'Настройки'}
+              {showAdvancedSetup ? t('game.setup.hideSettings') : t('game.setup.showSettings')}
             </button>
 
             {showAdvancedSetup ? (
@@ -969,14 +965,14 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
 
                 <div className="homeGameRowBtns">
                   <button onClick={connectMic} disabled={micReady} type="button">
-                    {micReady ? 'Микрофон подключён' : 'Подключить микрофон'}
+                    {micReady ? t('game.setup.micConnected') : t('game.setup.connectMic')}
                   </button>
                   <button onClick={beginCalibration} disabled={!micReady} type="button">
-                    Калибровка диапазона
+                    {t('game.calib.title')}
                   </button>
                 </div>
 
-                <div className="homeGameFinePrint">Калибровка улучшает подбор нот под ваш голос.</div>
+                <div className="homeGameFinePrint">{t('game.calib.title')}.</div>
               </div>
             ) : null}
           </section>
@@ -984,68 +980,68 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
 
         {stage === 'difficulty' && (
           <section className="v6Section v6Section--centered">
-            <h2>Выберите сложность</h2>
-            <p className="centerText">Сложность вынесена на отдельный экран, чтобы старт игры был понятнее и спокойнее.</p>
+            <h2>{t('game.difficulty.title')}</h2>
+            <p className="centerText">{t('game.difficulty.subtitle')}</p>
             <div className="difficultyGrid">
               <button type="button" className={`difficultyCard ${difficulty === 'newbie' ? 'difficultyCard--active' : ''}`} onClick={() => setDifficulty('newbie')}>
-                <strong>Новичок</strong>
-                <span>Комфортные цели из середины диапазона.</span>
+                <strong>{t('game.difficulty.newbie')}</strong>
+                <span>{t('game.difficulty.newbieDesc')}</span>
               </button>
               <button type="button" className={`difficultyCard ${difficulty === 'pro' ? 'difficultyCard--active' : ''}`} onClick={() => setDifficulty('pro')}>
-                <strong>Профи</strong>
-                <span>Шире диапазон целей и строже оценка.</span>
+                <strong>{t('game.difficulty.pro')}</strong>
+                <span>{t('game.difficulty.proDesc')}</span>
               </button>
             </div>
             <div className="calibrationActions">
-              <button type="button" onClick={() => setStage('setup')}>Назад</button>
-              <button type="button" className="primary" onClick={confirmDifficulty}>Продолжить к калибровке</button>
+              <button type="button" onClick={() => setStage('setup')}>{t('game.setup.back')}</button>
+              <button type="button" className="primary" onClick={confirmDifficulty}>{t('game.setup.continueCalibration')}</button>
             </div>
           </section>
         )}
 
         {stage === 'calibration' && (
           <section className="v6Section v6Section--centered">
-            <h2>Калибровка диапазона</h2>
-            <div className="calibrationStepBadge">Шаг {calibStep === 'low' ? '1 / 2' : calibStep === 'high' ? '2 / 2' : 'готово'}</div>
-            <h3 className="calibrationHeadline">{calibStep === 'low' ? 'Спойте самую низкую комфортную ноту' : calibStep === 'high' ? 'Спойте самую высокую комфортную ноту' : 'Калибровка завершена'}</h3>
-            <p className="centerText">{calibStep === 'low' ? 'Не напрягайтесь. Нужна устойчивая комфортная нота.' : 'Спойте высокий, но удобный для вас звук. Держите его ровно.'}</p>
+            <h2>{t('game.calib.title')}</h2>
+            <div className="calibrationStepBadge">{t('game.calib.step')} {calibStep === 'low' ? '1 / 2' : calibStep === 'high' ? '2 / 2' : t('game.calib.done')}</div>
+            <h3 className="calibrationHeadline">{calibStep === 'low' ? t('game.calib.lowTitle') : calibStep === 'high' ? t('game.calib.highTitle') : t('game.calib.finished')}</h3>
+            <p className="centerText">{calibStep === 'low' ? t('game.calib.lowDesc') : t('game.calib.highDesc')}</p>
             {calibrationError ? <div className="warning calibrationWarning">{calibrationError}</div> : null}
 
             {calibrationPhase === 'intro' && calibStep !== 'done' ? (
               <>
                 <div className="calibrationInfo">
-                  <div><strong>Что делать:</strong> пойте 4–5 секунд после нажатия кнопки.</div>
-                  <div><strong>Подсказка:</strong> {volumeHint}</div>
-                  <div><strong>Сейчас слышим:</strong> {freqToNote(pitch)} ({Math.round(pitch) || 0} Hz)</div>
+                  <div><strong>{t('game.calib.what')}</strong> {t('game.calib.whatDesc')}</div>
+                  <div><strong>{t('game.calib.tip')}</strong> {volumeHint}</div>
+                  <div><strong>{t('game.calib.heard')}</strong> {freqToNote(pitch)} ({Math.round(pitch) || 0} Hz)</div>
                 </div>
                 <div className="calibrationActions">
-                  <button type="button" onClick={() => setStage('difficulty')}>Назад</button>
-                  <button type="button" className="primary" onClick={startCalibrationStep}>Начать шаг</button>
+                  <button type="button" onClick={() => setStage('difficulty')}>{t('game.setup.back')}</button>
+                  <button type="button" className="primary" onClick={startCalibrationStep}>{t('game.calib.startStep')}</button>
                 </div>
               </>
             ) : null}
 
             {calibrationPhase === 'recording' ? (
               <>
-                <div className="calibrationTimer">Осталось: {(calibLeftMs / 1000).toFixed(1)} c</div>
+                <div className="calibrationTimer">{t('game.calib.left')} {(calibLeftMs / 1000).toFixed(1)} c</div>
                 <div className="calibrationInfo">
-                  <div><strong>Текущая нота:</strong> {freqToNote(pitch)}</div>
-                  <div><strong>Частота:</strong> {Math.round(pitch) || 0} Hz</div>
-                  <div><strong>Громкость:</strong> {volumeHint}</div>
+                  <div><strong>{t('game.calib.currentNote')}</strong> {freqToNote(pitch)}</div>
+                  <div><strong>{t('game.calib.freq')}</strong> {Math.round(pitch) || 0} Hz</div>
+                  <div><strong>{t('game.calib.volume')}</strong> {volumeHint}</div>
                 </div>
               </>
             ) : null}
 
             {calibrationPhase === 'captured' ? (
               <>
-                <div className="calibrationSuccess">✓ Нота записана: <strong>{freqToNote(calibrationPreview || 0)}</strong> ({Math.round(calibrationPreview || 0)} Hz)</div>
+                <div className="calibrationSuccess">{t('game.calib.saved')} <strong>{freqToNote(calibrationPreview || 0)}</strong> ({Math.round(calibrationPreview || 0)} Hz)</div>
                 <div className="calibrationActions">
                   {calibStep === 'done' ? (
-                    <button type="button" className="primary" onClick={handleCalibrationContinue}>Начать игру</button>
+                    <button type="button" className="primary" onClick={handleCalibrationContinue}>{t('game.calib.startGame')}</button>
                   ) : (
                     <>
-                      <button type="button" onClick={() => setCalibrationPhase('intro')}>Повторить шаг</button>
-                      <button type="button" className="primary" onClick={handleCalibrationContinue}>Дальше</button>
+                      <button type="button" onClick={() => setCalibrationPhase('intro')}>{t('game.calib.repeat')}</button>
+                      <button type="button" className="primary" onClick={handleCalibrationContinue}>{t('game.calib.next')}</button>
                     </>
                   )}
                 </div>
@@ -1056,7 +1052,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
 
         {stage === 'game' && (
           <section className="v6Section">
-            <h2>Раунд {roundIndex + 1} / {TOTAL_ROUNDS}</h2>
+            <h2>{t('game.round')} {roundIndex + 1} / {TOTAL_ROUNDS}</h2>
             <div className="v7GameGrid">
               <div className="v7Ring">
                 <PitchRingSmule cents={liveCents} note={freqToNote(pitch)} hz={pitch} confidence={confidence} />
@@ -1121,7 +1117,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
             {autoPaused ? (
               <>
                 <p className="warning">{pauseMsg}</p>
-                <button onClick={resumeAfterPause}>Продолжить</button>
+                <button onClick={resumeAfterPause}>{t('game.resume')}</button>
               </>
             ) : (
               <button
@@ -1133,7 +1129,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
                 onTouchEnd={stopHold}
                 onTouchCancel={stopHold}
               >
-                {holding ? 'Удерживайте ноту…' : 'Удерживать ноту'}
+                {holding ? t('game.holding') : t('game.hold')}
               </button>
             )}
           </section>
@@ -1141,50 +1137,31 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
 
         {stage === 'results' && (
           <section className="v6Section v6Section--results">
-            <h2>Результаты</h2>
+            <h2>{t('game.results')}</h2>
             <div className="resultGrid">
-              <div className="resultRow"><span>Итоговый счёт</span><strong>{finalScore}</strong></div>
-              <div className="resultRow"><span>Награда</span><strong>{'⭐'.repeat(starsFromScore(finalScore))}</strong></div>
-              <div className="resultRow"><span>Уровень</span><strong>{level}</strong></div>
-              <div className="resultRow resultRow--text"><span>Оффер</span><div>{offer}</div></div>
-              <div className="resultRow resultRow--text"><span>Приз</span><div>🎁 Напишите «ХОЧУ ПРИЗ» в DM и получите бонус-упражнение.</div></div>
-              <div className="resultRow resultRow--text"><span>Авто-DM</span><div>«Привет! Прошёл челлендж, хочу разбор голоса и план занятий».</div></div>
+              <div className="resultRow"><span>{t('game.results.total')}</span><strong>{finalScore}</strong></div>
+              <div className="resultRow"><span>{t('game.results.reward')}</span><strong>{'⭐'.repeat(starsFromScore(finalScore))}</strong></div>
+              <div className="resultRow"><span>{t('game.results.level')}</span><strong>{level}</strong></div>
+              <div className="resultRow resultRow--text"><span>{t('game.results.offer')}</span><div>{offer}</div></div>
+              <div className="resultRow resultRow--text"><span>{t('game.results.prize')}</span><div>{t('game.results.prizeText')}</div></div>
+              <div className="resultRow resultRow--text"><span>{t('game.results.dm')}</span><div>{t('game.results.dmText')}</div></div>
             </div>
 
-            <div className="resultControls">
-              <label>
-                <span>Стиль карточки</span>
-                <select value={cardStyle} onChange={(e) => setCardStyle(e.target.value as CardStyle)}>
-                  <option value="minimal">Минимал</option>
-                  <option value="neon">Неон</option>
-                  <option value="karaoke">Караоке</option>
-                </select>
-              </label>
-
-              <label>
-                <span>UTM шаблон</span>
-                <select value={template} onChange={(e) => setTemplate(e.target.value as 'template_a' | 'template_b')}>
-                  <option value="template_a">Шаблон A</option>
-                  <option value="template_b">Шаблон B</option>
-                </select>
-              </label>
-            </div>
-
-            <p className="linkWrap">Ссылка для стикера: <a href={utmUrl} target="_blank" rel="noreferrer">{utmUrl}</a></p>
+            <p className="linkWrap">{t('game.results.link')} <a href={utmUrl} target="_blank" rel="noreferrer">{utmUrl}</a></p>
             <div className="shareRow">
-              <button onClick={shareToStories}>Поделиться в Stories</button>
-              <button onClick={shareResultText}>Поделиться текстом</button>
-              <a className="dm" href={`https://ig.me/m/vocal.jivoizvuk.ekb?text=${dmText}`} target="_blank" rel="noreferrer">Открыть DM с текстом</a>
+              <button onClick={shareToStories}>{t('game.results.shareStories')}</button>
+              <button onClick={shareResultText}>{t('game.results.shareText')}</button>
+              <a className="dm" href={`https://ig.me/m/vocal.jivoizvuk.ekb?text=${dmText}`} target="_blank" rel="noreferrer">{t('game.results.openDm')}</a>
             </div>
 
-            <h3>Последние игры</h3>
+            <h3>{t('game.results.history')}</h3>
             <ul>{history.map((h: HistoryRecord) => <li key={h.date}>{new Date(h.date).toLocaleString()} — {h.score} ({h.level})</li>)}</ul>
-            <p>Ежедневная серия: {streak} 🔥</p>
+            <p>{t('game.results.daily')} {streak} 🔥</p>
 
-            <h3>Недельный рейтинг (локальный топ‑5)</h3>
+            <h3>{t('game.results.weekly')}</h3>
             <ol>{leaderboard.map((x: LeaderRecord) => <li key={x.id}>{x.id}: {x.score}</li>)}</ol>
 
-            <button onClick={resetAll}>Полный перезапуск челленджа</button>
+            <button onClick={resetAll}>{t('game.results.reset')}</button>
           </section>
         )}
       </div>

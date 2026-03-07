@@ -1,3 +1,4 @@
+import { useI18n } from "../i18n";
 
 type Props={
  note:string;
@@ -5,13 +6,14 @@ type Props={
 };
 
 export default function DailyChallenge({note,onStart}:Props){
+ const { t } = useI18n();
  return(
   <div className="daily">
-    <h2>🎯 Daily Challenge</h2>
+    <h2>{t("daily.title")}</h2>
     <div className="dailyNote">
-      Sing note: <b>{note}</b>
+      {t("daily.note")}: <b>{note}</b>
     </div>
-    <button onClick={onStart}>Start</button>
+    <button onClick={onStart}>{t("daily.start")}</button>
   </div>
  );
 }
