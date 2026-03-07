@@ -2103,47 +2103,57 @@ body {
   }
 }
 
-.resultsGrid{
-  display:grid;
-  gap:10px;
-  margin: 10px 0 14px;
-}
-.resultRow{
-  display:grid;
-  grid-template-columns: 180px 1fr;
-  gap:12px;
-  align-items:start;
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-}
-.resultLabel{
-  color: rgba(255,255,255,0.68);
-}
-.shareHint{
-  margin: 8px 0 12px;
-  color: rgba(255,255,255,0.76);
-}
-.leaderboardNote{
-  margin: 0 0 8px;
-  color: rgba(255,255,255,0.62);
-  font-size: 13px;
-}
-.leaderboardList{
-  padding-left: 20px;
-}
-.leaderboardList li{
-  display:grid;
-  grid-template-columns: 1fr auto;
-  gap:12px;
-  align-items:center;
-  padding: 4px 0;
-}
-.v6Section a{
-  overflow-wrap:anywhere;
+
+/* V2 overrides */
+body{font-variant-numeric:tabular-nums; font-feature-settings:"tnum";}
+a{overflow-wrap:anywhere; word-break:break-word;}
+.v5Card{width:min(860px,100%);}
+.v6GameCard{width:min(860px,100%);}
+.v6Section{padding:20px; border-radius:22px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08);}
+.v6Section--centered{text-align:center;}
+.v6Section--results{max-width:100%;}
+.centerText{max-width:560px; margin:0 auto; color:rgba(255,255,255,0.74);}
+.v7GameGrid{display:grid; grid-template-columns:200px minmax(0,1fr); gap:18px; align-items:center;}
+.v7Hud{display:flex; flex-direction:column; gap:12px;}
+.hudRowMain,.hudRowStats{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px;}
+.metricCell{min-height:62px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:6px; white-space:nowrap;}
+.metricLabel{font-size:12px; color:rgba(255,255,255,0.7); line-height:1.1;}
+.metricValue{display:block; min-height:20px; line-height:1; font-size:16px;}
+.metricCell--stars{min-width:140px;}
+.starsRow{width:100%; display:flex; justify-content:center; gap:4px; font-size:18px; letter-spacing:0;}
+.star{display:inline-flex; width:16px; justify-content:center; opacity:.55;}
+.star--on{opacity:1;}
+.pitchRoad{width:100%; height:132px; display:block;}
+.pitchRoadWrap{width:100%;}
+.pitchRoadLegend{display:flex; justify-content:center; gap:12px; flex-wrap:wrap; margin-top:8px; font-size:12px; color:rgba(255,255,255,0.7);}
+.difficultyGrid{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-top:16px;}
+.difficultyCard{width:100%; display:flex; flex-direction:column; align-items:flex-start; gap:8px; text-align:left; padding:16px; border-radius:16px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1);}
+.difficultyCard--active{border-color:rgba(110,160,255,0.75); box-shadow:0 0 0 1px rgba(110,160,255,0.3) inset;}
+.calibrationStepBadge{display:inline-flex; margin:6px auto 10px; padding:8px 12px; border-radius:999px; background:rgba(110,160,255,0.12); border:1px solid rgba(110,160,255,0.24);}
+.calibrationHeadline{margin:0 0 8px;}
+.calibrationInfo{max-width:560px; margin:16px auto 0; display:grid; gap:10px; text-align:left; padding:16px; border-radius:16px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);}
+.calibrationTimer{font-size:28px; font-weight:700; margin-top:10px;}
+.calibrationSuccess{margin:18px auto 0; max-width:560px; padding:16px; border-radius:16px; background:rgba(60,180,120,0.12); border:1px solid rgba(60,180,120,0.3);}
+.calibrationActions{display:flex; justify-content:center; gap:12px; flex-wrap:wrap; margin-top:16px;}
+.resultGrid{display:grid; gap:8px; margin-top:10px;}
+.resultRow{display:grid; grid-template-columns:180px minmax(0,1fr); gap:12px; align-items:start; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.06);}
+.resultRow--text{align-items:start;}
+.resultControls{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin:18px 0 10px;}
+.resultControls label{display:flex; flex-direction:column; gap:8px;}
+.linkWrap{overflow-wrap:anywhere; word-break:break-word;}
+.shareRow{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+.shareRow > *{flex:0 0 auto;}
+.homeGameSetup,.homeGamePrimary,.homeGameAdvanced,.homeGameHint,.homeGameTitle,.homeGameSubtitle{ text-align:center;}
+.homeGameAdvanced .homeGameRowBtns{display:flex; justify-content:center; gap:10px; flex-wrap:wrap;}
+@media (max-width: 900px){
+  .v7GameGrid{grid-template-columns:1fr;}
+  .hudRowMain,.hudRowStats{grid-template-columns:repeat(2,minmax(0,1fr));}
 }
 @media (max-width: 640px){
-  .resultRow{
-    grid-template-columns: 1fr;
-    gap:4px;
-  }
+  .v5Shell{align-items:flex-start; padding:16px;}
+  .v5Card{width:min(100%, 640px);}
+  .difficultyGrid,.resultControls{grid-template-columns:1fr;}
+  .resultRow{grid-template-columns:1fr; gap:6px;}
+  .shareRow > *{width:100%;}
+  .metricCell{min-height:58px;}
 }

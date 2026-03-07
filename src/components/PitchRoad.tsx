@@ -26,7 +26,7 @@ const colorFor = (g: PitchGrade) => {
   }
 };
 
-export default function PitchRoad({ points, windowMs = 6000 }: Props) {
+export default function PitchRoad({ points, windowMs = 4500 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const normalized = useMemo(() => {
@@ -45,7 +45,7 @@ export default function PitchRoad({ points, windowMs = 6000 }: Props) {
     if (!ctx) return;
 
     const rect = canvas.getBoundingClientRect();
-    const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    const dpr = 1;
     const cssWidth = Math.max(280, Math.round(rect.width || 720));
     const cssHeight = Math.max(128, Math.round(rect.height || 168));
     if (canvas.width !== cssWidth * dpr || canvas.height !== cssHeight * dpr) {
@@ -86,7 +86,7 @@ export default function PitchRoad({ points, windowMs = 6000 }: Props) {
       ctx.fillStyle = "rgba(255,255,255,0.62)";
       ctx.font = "600 14px system-ui, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText("Пойте, чтобы увидеть линию попадания", w / 2, mid + 5);
+      ctx.fillText("Спойте ноту, чтобы увидеть дорожку", w / 2, mid + 5);
       return;
     }
 
@@ -98,7 +98,7 @@ export default function PitchRoad({ points, windowMs = 6000 }: Props) {
       const only = normalized[0];
       ctx.fillStyle = colorFor(only.grade);
       ctx.shadowColor = colorFor(only.grade);
-      ctx.shadowBlur = 12;
+      ctx.shadowBlur = 0;
       ctx.beginPath();
       ctx.arc(xForT(only.t), centsToY(only.cents), 5, 0, Math.PI * 2);
       ctx.fill();
@@ -106,7 +106,7 @@ export default function PitchRoad({ points, windowMs = 6000 }: Props) {
       return;
     }
 
-    ctx.lineWidth = 5;
+    ctx.lineWidth = 4;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     for (let i = 1; i < normalized.length; i += 1) {
@@ -115,7 +115,7 @@ export default function PitchRoad({ points, windowMs = 6000 }: Props) {
       if (b.t - a.t > 350) continue;
       ctx.strokeStyle = colorFor(b.grade);
       ctx.shadowColor = colorFor(b.grade);
-      ctx.shadowBlur = 10;
+      ctx.shadowBlur = 0;
       ctx.beginPath();
       ctx.moveTo(xForT(a.t), centsToY(a.cents));
       ctx.lineTo(xForT(b.t), centsToY(b.cents));
@@ -126,7 +126,7 @@ export default function PitchRoad({ points, windowMs = 6000 }: Props) {
     const last = normalized[normalized.length - 1];
     ctx.fillStyle = colorFor(last.grade);
     ctx.shadowColor = colorFor(last.grade);
-    ctx.shadowBlur = 18;
+    ctx.shadowBlur = 0;
     ctx.beginPath();
     ctx.arc(xForT(last.t), centsToY(last.cents), 5, 0, Math.PI * 2);
     ctx.fill();
