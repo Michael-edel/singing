@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef } from "react";
-import { useI18n } from "../i18n";
 
 export type PitchGrade = "perfect" | "great" | "good" | "bad";
 
@@ -29,7 +28,6 @@ const colorFor = (g: PitchGrade) => {
 
 export default function PitchRoad({ points, windowMs = 4500 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const { t } = useI18n();
 
   const normalized = useMemo(() => {
     if (!points.length) return [] as PitchPoint[];
@@ -88,7 +86,7 @@ export default function PitchRoad({ points, windowMs = 4500 }: Props) {
       ctx.fillStyle = "rgba(255,255,255,0.62)";
       ctx.font = "600 14px system-ui, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(t("pitch.road.empty"), w / 2, mid + 5);
+      ctx.fillText("Спойте ноту, чтобы увидеть дорожку", w / 2, mid + 5);
       return;
     }
 
@@ -139,10 +137,10 @@ export default function PitchRoad({ points, windowMs = 4500 }: Props) {
     <div className="pitchRoadWrap">
       <canvas ref={canvasRef} className="pitchRoad" />
       <div className="pitchRoadLegend" aria-hidden>
-        <span>{t("pitch.legend.perfect")}</span>
-        <span>{t("pitch.legend.great")}</span>
-        <span>{t("pitch.legend.good")}</span>
-        <span>{t("pitch.legend.bad")}</span>
+        <span>⭐ идеально</span>
+        <span>✨ отлично</span>
+        <span>👍 нормально</span>
+        <span>• мимо</span>
       </div>
     </div>
   );

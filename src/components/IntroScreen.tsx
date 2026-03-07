@@ -1,14 +1,12 @@
 import { useEffect } from "react";
 import { motion } from "framer-motion";
-import { useI18n } from "../i18n";
 
 type Props = { onDone: () => void };
 
 export default function IntroScreen({ onDone }: Props) {
-  const { t } = useI18n();
   useEffect(() => {
-    const timer = window.setTimeout(onDone, 1800);
-    return () => window.clearTimeout(timer);
+    const t = window.setTimeout(onDone, 1800);
+    return () => window.clearTimeout(t);
   }, [onDone]);
 
   return (
@@ -28,9 +26,9 @@ export default function IntroScreen({ onDone }: Props) {
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.45 }}
       >
-        <div className="introKicker">{t("intro.kicker")}</div>
+        <div className="introKicker">Vocal Pitch Challenge</div>
         <div className="introTitle">MiniVocalGame</div>
-        <div className="introSub">{t("intro.sub")}</div>
+        <div className="introSub">Попади в ноту. Забери первое место.</div>
       </motion.div>
     </motion.button>
   );

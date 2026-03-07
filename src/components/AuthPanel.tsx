@@ -108,7 +108,7 @@ export function AuthPanel({ user, onUser }: Props) {
           shape: "pill",
           text: "signin_with",
           width,
-          locale: lang === "ru" ? "ru" : lang === "kz" ? "kk" : "en",
+          locale: lang === "ru" ? "ru" : "en",
         });
       } catch (e: any) {
         setErr(e?.message || String(e));
@@ -203,7 +203,6 @@ export function AuthPanel({ user, onUser }: Props) {
           <select className="langSelect" value={lang} onChange={(e) => setLang(e.target.value as any)} aria-label="Language">
             <option value="ru">{t("lang.ru")}</option>
             <option value="en">{t("lang.en")}</option>
-            <option value="kz">{t("lang.kz")}</option>
           </select>
         </div>
       </div>

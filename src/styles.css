@@ -2157,3 +2157,203 @@ a{overflow-wrap:anywhere; word-break:break-word;}
   .shareRow > *{width:100%;}
   .metricCell{min-height:58px;}
 }
+
+
+/* ===== V4 mobile fit + touch fixes ===== */
+button, .hold, .badge.btn.metricCell--tone, .homeGameMicBtn, .primary, .dm {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.v5Shell.v6Shell {
+  min-height: 100dvh;
+  justify-content: center;
+  padding-top: max(20px, env(safe-area-inset-top));
+  padding-bottom: max(20px, env(safe-area-inset-bottom));
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+  overflow-x: hidden;
+}
+
+.v5Card.v6GameCard {
+  width: min(920px, 100%);
+}
+
+.v6Section {
+  width: 100%;
+}
+
+.linkWrap, .linkWrap a {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.hudRowMain {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.hudRowStats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.metricCell, .badge.btn.metricCell--tone {
+  min-width: 0;
+}
+
+.metricLabel, .metricValue, .starsRow {
+  width: 100%;
+  text-align: center;
+}
+
+.starsRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+}
+
+.homeGameFinePrint--compact {
+  width: min(560px, 100%);
+  margin-top: 8px;
+}
+
+@media (max-width: 700px) {
+  .v5Shell.v6Shell {
+    justify-content: flex-start;
+    padding-top: max(12px, env(safe-area-inset-top));
+    padding-bottom: max(96px, env(safe-area-inset-bottom));
+  }
+
+  .v5Card.v6GameCard {
+    width: 100%;
+    padding: 14px;
+    border-radius: 22px;
+  }
+
+  .v6GameCard--play {
+    padding-top: 12px;
+  }
+
+  .v6Section {
+    gap: 10px;
+  }
+
+  .v7GameGrid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .v7Ring {
+    display: flex;
+    justify-content: center;
+  }
+
+  .pitchRing {
+    width: 170px;
+    height: 170px;
+  }
+
+  .hudRowMain {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .hudRowStats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .metricCell, .badge.btn.metricCell--tone {
+    min-height: 56px;
+    padding: 10px 8px;
+    border-radius: 14px;
+  }
+
+  .metricValue {
+    font-size: 15px;
+  }
+
+  .metricLabel {
+    font-size: 12px;
+  }
+
+  .starsRow {
+    min-height: 20px;
+  }
+
+  canvas.pitchRoadCanvas, .pitchRoad canvas {
+    height: 104px !important;
+  }
+
+  .hint, .subtle, .centerText, p {
+    font-size: 14px;
+    line-height: 1.4;
+  }
+
+  .hold {
+    width: 100%;
+    min-height: 54px;
+    position: sticky;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    z-index: 5;
+  }
+
+  .homeGameSetup {
+    padding: 4px 0 0;
+    gap: 12px;
+  }
+
+  .homeGameTitle {
+    font-size: 21px;
+    line-height: 1.15;
+    margin: 0;
+  }
+
+  .homeGameSubtitle {
+    font-size: 14px;
+    line-height: 1.35;
+    margin: 0;
+  }
+
+  .homeGameHint, .homeGameFinePrint {
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  .homeGameMicBtn {
+    min-height: 54px;
+    font-size: 17px;
+    padding: 12px 14px;
+  }
+
+  .difficultyGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .calibrationActions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .resultGrid {
+    gap: 10px;
+  }
+
+  .resultRow {
+    grid-template-columns: 110px 1fr;
+    gap: 10px;
+  }
+
+  .shareRow {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
