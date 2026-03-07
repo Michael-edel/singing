@@ -1,44 +1,45 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef } from 'react';
 
 export function useMicrophone(onFrame: (data: Float32Array) => void) {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const rafRef = useRef<number | null>(null);
-  const ctxRef = useRef<AudioContext | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    let ctx: AudioContext | null = null;
+    let stream: MediaStream | null = null;
+    let source: MediaStreamAudioSourceNode | null = null;
 
     async function start() {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       if (cancelled) return;
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      const ctx = new AudioCtx();
-      const src = ctx.createMediaStreamSource(stream);
+      ctx = new AudioContext();
+      source = ctx.createMediaStreamSource(stream);
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 2048;
-      src.connect(analyser);
+      source.connect(analyser);
       analyserRef.current = analyser;
-      ctxRef.current = ctx;
-      streamRef.current = stream;
-
       const buffer = new Float32Array(analyser.fftSize);
+
       const loop = () => {
-        if (!analyserRef.current) return;
+        if (!analyserRef.current || cancelled) return;
         analyserRef.current.getFloatTimeDomainData(buffer);
         onFrame(buffer);
         rafRef.current = requestAnimationFrame(loop);
       };
-      rafRef.current = requestAnimationFrame(loop);
+
+      loop();
     }
 
-    start().catch(() => undefined);
+    void start();
 
     return () => {
       cancelled = true;
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      streamRef.current?.getTracks().forEach((track) => track.stop());
-      ctxRef.current?.close().catch(() => undefined);
+      source?.disconnect();
+      analyserRef.current?.disconnect();
+      stream?.getTracks().forEach((track) => track.stop());
+      void ctx?.close();
     };
   }, [onFrame]);
 }

@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PitchRingSmule } from './components/PitchRingSmule';
 import { ScoreMeter } from './components/ScoreMeter';
-import PitchRoad, { type PitchGrade, type PitchPoint } from './components/PitchRoad';
 import HUDPanel from './components/HUDPanel';
+import PitchRoad, { type PitchGrade, type PitchPoint } from './components/PitchRoad';
 import { PitchEngine } from './audio/PitchEngine';
-import { PitchEngineV2 } from './audio/pitchEngineV2';
 import { playReferenceTone as startReferenceTone, type ReferenceToneHandle } from './utils/referenceTone';
 import { useI18n } from './i18n';
 
@@ -205,7 +204,6 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
   const [pitch, setPitch] = useState(0);
   const [confidence, setConfidence] = useState(0);
   const [volume, setVolume] = useState(0);
-  const [pitchStable, setPitchStable] = useState(false);
   const [roundIndex, setRoundIndex] = useState(0);
   const [targetFreq, setTargetFreq] = useState(220);
   const [holding, setHolding] = useState(false);
@@ -245,7 +243,6 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const pitchEngineRef = useRef<PitchEngine | null>(null);
-  const pitchEngineV2Ref = useRef<PitchEngineV2 | null>(null);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -316,7 +313,6 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
     hzRingCountRef.current = 0;
     emaHzRef.current = null;
     pitchEngineRef.current?.resetSmoothing();
-    pitchEngineV2Ref.current?.reset();
   };
 
   const connectMic = async () => {
@@ -364,35 +360,52 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
           minHz: 80,
           maxHz: 1000,
           threshold: 0.15,
-          minProbability: 0.1,
-          emaAlpha: 0,
-        });
-      }
-      if (!pitchEngineV2Ref.current) {
-        pitchEngineV2Ref.current = new PitchEngineV2({
-          sampleRate: ctx.sampleRate,
-          minHz: 80,
-          maxHz: 1000,
-          minRms: 0.01,
-          minConfidence: 0.58,
-          smoothingAlpha: 0.18,
-          jumpRejectCents: 180,
+          minProbability: 0.7,
+          emaAlpha: 0.2,
         });
       }
 
       analyserNode.getFloatTimeDomainData(buffer);
-      const frame = pitchEngineV2Ref.current.process(buffer, (input) => {
-        const raw = pitchEngineRef.current?.process(input) ?? null;
-        return { hz: raw?.hz ?? null, confidence: raw?.probability ?? 0 };
-      });
-      const rms = frame.rms ?? 0;
-      const prob = frame.confidence ?? 0;
-      lastConfidenceRef.current = prob;
+      const res = pitchEngineRef.current.process(buffer);
+      const rms = res?.rms ?? 0;
+      const prob = res?.probability ?? 0;
+      lastConfidenceRef.current = res ? res.probability : 0;
       lastVolumeRef.current = rms;
 
-      const voiced = frame.voiced && prob >= 0.58 && rms >= 0.01;
-      const hz = voiced && frame.hz ? frame.hz : 0;
-      if (!hz) resetPitchSmoothing();
+      const voiced = !!res && prob >= 0.6 && rms >= 0.012;
+      let hz = voiced ? res!.hz : 0;
+
+      if (hz > 0) {
+        if (!hzRingRef.current) hzRingRef.current = new Float64Array(5);
+        if (!hzRingTmpRef.current) hzRingTmpRef.current = new Float64Array(5);
+
+        const ring = hzRingRef.current;
+        const tmp = hzRingTmpRef.current;
+        ring[hzRingIdxRef.current] = hz;
+        hzRingIdxRef.current = (hzRingIdxRef.current + 1) % ring.length;
+        hzRingCountRef.current = Math.min(ring.length, hzRingCountRef.current + 1);
+
+        const n = hzRingCountRef.current;
+        for (let i = 0; i < n; i += 1) tmp[i] = ring[i];
+        for (let i = 1; i < n; i += 1) {
+          const key = tmp[i];
+          let j = i - 1;
+          while (j >= 0 && tmp[j] > key) {
+            tmp[j + 1] = tmp[j];
+            j -= 1;
+          }
+          tmp[j + 1] = key;
+        }
+        const medianHz = tmp[Math.floor((n - 1) / 2)];
+        const prev = emaHzRef.current;
+        const alpha = 0.2;
+        const smoothHz = prev == null ? medianHz : prev + alpha * (medianHz - prev);
+        emaHzRef.current = smoothHz;
+        smoothHzRef.current = smoothHz;
+        hz = smoothHz;
+      } else {
+        resetPitchSmoothing();
+      }
 
       lastPitchRef.current = hz;
       const p = hz;
@@ -401,7 +414,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
       const isHolding = holdingRef.current;
       const isAutoPaused = autoPausedRef.current;
 
-      if (currentStage === 'game' && !isAutoPaused && frame.voiced && prob >= 0.45 && rms >= 0.008 && p > 0) {
+      if (currentStage === 'game' && !isAutoPaused && res && res.probability >= 0.45 && rms >= 0.008 && p > 0) {
         const now = performance.now();
         const centsRaw = hzToCentsDiff(p, currentTarget);
         const cents = clamp(centsRaw, -60, 60);
@@ -450,8 +463,6 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
           setPitch(lastPitchRef.current);
           setConfidence(lastConfidenceRef.current);
           setVolume(lastVolumeRef.current);
-        setPitchStable(frame.stable);
-          setPitchStable(frame.stable);
           setLiveAccuracy(Math.round(accuracyPct));
           setHoldProgress(progress);
         }
@@ -783,7 +794,6 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
   }, [template]);
 
   const dmText = encodeURIComponent(`Привет! Я прошёл Mini Vocal Challenge, получил ${finalScore} (${level}). Хочу разбор и план роста 🎤`);
-  const lessonUrl = 'https://www.instagram.com/vocal.jivoizvuk.ekb/';
   const offer =
     level === 'Новичок'
       ? 'Оффер: диагностика + базовый план за 20 минут.'
@@ -1056,17 +1066,17 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
               <div className="v7Hud">
                 <HUDPanel
                   liveHz={pitch}
-                  target={freqToNote(targetFreq)}
+                  targetNote={freqToNote(targetFreq)}
                   stars={liveStars}
                   confidence={confidence}
                   streak={streak}
-                  stable={pitchStable}
                 />
 
-                <div className="hudToneRow">
+                <div className="toneRowV2">
                   <button
                     className="badge btn metricCell metricCell--tone"
                     title={t('hud.playTone')}
+                    onContextMenu={(e) => e.preventDefault()}
                     onMouseDown={playReferenceTone}
                     onMouseUp={stopReferenceTone}
                     onMouseLeave={stopReferenceTone}
@@ -1138,20 +1148,20 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
               <div className="resultRow"><span>Итоговый счёт</span><strong>{finalScore}</strong></div>
               <div className="resultRow"><span>Награда</span><strong>{'⭐'.repeat(starsFromScore(finalScore))}</strong></div>
               <div className="resultRow"><span>Уровень</span><strong>{level}</strong></div>
-              <div className="resultRow resultRow--text"><span>Лучший CTA</span><div>{offer}</div></div>
+              <div className="resultRow resultRow--text"><span>Разбор</span><div>{offer}</div></div>
             </div>
 
-            <div className="shareRow">
-              <button onClick={shareToStories}>Поделиться в Stories</button>
-              <button onClick={shareResultText}>Поделиться текстом</button>
-              <a className="dm" href={`https://ig.me/m/vocal.jivoizvuk.ekb?text=${dmText}`} target="_blank" rel="noreferrer">Открыть DM</a>
+            <div className="studioCtaCard">
+              <div className="studioCtaEyebrow">Studio CTA</div>
+              <h3>{t('results.studioCta')}</h3>
+              <div className="shareRow">
+                <button onClick={shareToStories}>Поделиться в Stories</button>
+                <button onClick={shareResultText}>Поделиться текстом</button>
+                <a className="dm" href={`https://ig.me/m/vocal.jivoizvuk.ekb?text=${dmText}`} target="_blank" rel="noreferrer">{t('results.bookLesson')}</a>
+              </div>
             </div>
 
-            <div className="studioCta">
-              <div className="studioCta__title">Хочешь поднять результат?</div>
-              <div className="studioCta__text">Запишись на урок в студию: разберём дыхание, интонацию и подберём упражнения под твой диапазон.</div>
-              <a className="studioCta__button" href={lessonUrl} target="_blank" rel="noreferrer">Записаться на урок в студию</a>
-            </div>
+            <p className="linkWrap">Ссылка для стикера: <a href={utmUrl} target="_blank" rel="noreferrer">{utmUrl}</a></p>
 
             <h3>Последние игры</h3>
             <ul>{history.map((h: HistoryRecord) => <li key={h.date}>{new Date(h.date).toLocaleString()} — {h.score} ({h.level})</li>)}</ul>

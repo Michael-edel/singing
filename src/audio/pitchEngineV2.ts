@@ -29,8 +29,10 @@ function rmsFromBuffer(buffer: Float32Array): number {
   return Math.sqrt(sum / buffer.length);
 }
 
-function centsDiff(hz: number, targetHz: number): number {
-  return 1200 * Math.log2(hz / targetHz);
+function clampHz(hz: number, minHz: number, maxHz: number): number | null {
+  if (!Number.isFinite(hz)) return null;
+  if (hz < minHz || hz > maxHz) return null;
+  return hz;
 }
 
 export class PitchEngineV2 {
@@ -38,15 +40,15 @@ export class PitchEngineV2 {
   private history: number[] = [];
   private readonly opts: Required<PitchEngineV2Options>;
 
-  constructor(options: PitchEngineV2Options) {
+  constructor(opts: PitchEngineV2Options) {
     this.opts = {
-      sampleRate: options.sampleRate,
-      minHz: options.minHz ?? 80,
-      maxHz: options.maxHz ?? 1100,
-      minRms: options.minRms ?? 0.01,
-      minConfidence: options.minConfidence ?? 0.6,
-      smoothingAlpha: options.smoothingAlpha ?? 0.18,
-      jumpRejectCents: options.jumpRejectCents ?? 180,
+      sampleRate: opts.sampleRate,
+      minHz: opts.minHz ?? 80,
+      maxHz: opts.maxHz ?? 1100,
+      minRms: opts.minRms ?? 0.01,
+      minConfidence: opts.minConfidence ?? 0.65,
+      smoothingAlpha: opts.smoothingAlpha ?? 0.18,
+      jumpRejectCents: opts.jumpRejectCents ?? 180,
     };
   }
 
@@ -54,59 +56,68 @@ export class PitchEngineV2 {
     input: Float32Array,
     detector: (input: Float32Array, sampleRate: number) => { hz: number | null; confidence: number },
   ): PitchFrame {
-    const signalRms = rmsFromBuffer(input);
+    const rms = rmsFromBuffer(input);
     const timestamp = performance.now();
 
-    if (signalRms < this.opts.minRms) {
+    if (rms < this.opts.minRms) {
       this.reset();
       return {
-        hz: null, midi: null, cents: null, confidence: 0, rms: signalRms, voiced: false, stable: false, timestamp,
+        hz: null,
+        midi: null,
+        cents: null,
+        confidence: 0,
+        rms,
+        voiced: false,
+        stable: false,
+        timestamp,
       };
     }
 
     const detected = detector(input, this.opts.sampleRate);
-    let hz = detected.hz;
-    if (!hz || !Number.isFinite(hz) || hz < this.opts.minHz || hz > this.opts.maxHz || detected.confidence < this.opts.minConfidence) {
+    let rawHz = clampHz(detected.hz ?? NaN, this.opts.minHz, this.opts.maxHz);
+    if (!rawHz || detected.confidence < this.opts.minConfidence) {
       return {
-        hz: null, midi: null, cents: null, confidence: detected.confidence, rms: signalRms, voiced: false, stable: false, timestamp,
+        hz: null,
+        midi: null,
+        cents: null,
+        confidence: detected.confidence,
+        rms,
+        voiced: false,
+        stable: false,
+        timestamp,
       };
     }
 
     if (this.prevHz) {
-      const jump = centsDiff(hz, this.prevHz);
-      if (Math.abs(jump) > this.opts.jumpRejectCents) hz = this.prevHz;
+      const jump = 1200 * Math.log2(rawHz / this.prevHz);
+      if (Math.abs(jump) > this.opts.jumpRejectCents) rawHz = this.prevHz;
     }
 
-    const smoothedHz = this.prevHz
-      ? this.prevHz * (1 - this.opts.smoothingAlpha) + hz * this.opts.smoothingAlpha
-      : hz;
+    const hz = this.prevHz
+      ? this.prevHz * (1 - this.opts.smoothingAlpha) + rawHz * this.opts.smoothingAlpha
+      : rawHz;
 
-    this.prevHz = smoothedHz;
-    this.history.push(smoothedHz);
+    this.prevHz = hz;
+    this.history.push(hz);
     if (this.history.length > 6) this.history.shift();
 
-    const mean = this.history.reduce((a, b) => a + b, 0) / this.history.length;
-    const variance = this.history.reduce((a, b) => a + (b - mean) ** 2, 0) / this.history.length;
+    const mean = this.history.reduce((acc, value) => acc + value, 0) / this.history.length;
+    const variance = this.history.reduce((acc, value) => acc + (value - mean) ** 2, 0) / this.history.length;
     const stable = Math.sqrt(variance) < 8;
 
     return {
-      hz: smoothedHz,
-      midi: hzToMidi(smoothedHz),
+      hz,
+      midi: hzToMidi(hz),
       cents: null,
       confidence: detected.confidence,
-      rms: signalRms,
+      rms,
       voiced: true,
       stable,
       timestamp,
     };
   }
 
-  centsToTarget(hz: number | null, targetHz: number | null): number | null {
-    if (!hz || !targetHz) return null;
-    return centsDiff(hz, targetHz);
-  }
-
-  reset() {
+  reset(): void {
     this.prevHz = null;
     this.history = [];
   }

@@ -55,12 +55,12 @@ const DICTS: Record<Lang, Dict> = {
     "hud.streak": "Серия",
     "hud.confidence": "Уверенность",
     "hud.stars": "Звёзды",
-
-    "pitch.roadHint": "Спойте ноту, чтобы увидеть дорожку",
-    "pitch.legendPerfect": "идеально",
-    "pitch.legendGreat": "отлично",
-    "pitch.legendGood": "нормально",
-    "pitch.legendMiss": "мимо",
+    "pitch.roadEmpty": "Спойте ноту, чтобы увидеть дорожку",
+    "pitch.perfect": "идеально",
+    "pitch.close": "близко",
+    "pitch.off": "мимо",
+    "results.bookLesson": "Записаться на урок",
+    "results.studioCta": "Хотите такой же разбор и рост точности? Запишитесь на пробный урок в студию.",
 
     // Components
     "pitch.cents": "центов",
@@ -117,12 +117,12 @@ const DICTS: Record<Lang, Dict> = {
     "hud.streak": "Streak",
     "hud.confidence": "Confidence",
     "hud.stars": "Stars",
-
-    "pitch.roadHint": "Sing to see the pitch road",
-    "pitch.legendPerfect": "perfect",
-    "pitch.legendGreat": "great",
-    "pitch.legendGood": "good",
-    "pitch.legendMiss": "miss",
+    "pitch.roadEmpty": "Sing to see your pitch road",
+    "pitch.perfect": "perfect",
+    "pitch.close": "close",
+    "pitch.off": "off",
+    "results.bookLesson": "Book a lesson",
+    "results.studioCta": "Want the same analysis and faster pitch control? Book a trial studio lesson.",
 
     "pitch.cents": "cents",
     "pitch.nice": "Nice!",
