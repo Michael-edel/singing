@@ -2012,3 +2012,93 @@ body {
     font-size: 15px;
   }
 }
+
+/* --- V29.1 fixed metric cells + stronger pitch road + stable tone button --- */
+.hudRowMain,
+.hudRowStats {
+  display: grid;
+  gap: 10px;
+}
+
+.hudRowMain {
+  grid-template-columns: minmax(132px, 1fr) minmax(118px, 1fr) minmax(118px, 1fr) 136px;
+}
+
+.hudRowStats {
+  grid-template-columns: 132px 160px;
+}
+
+.metricCell {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.metricCell strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.metricCell--stars {
+  letter-spacing: 1px;
+}
+
+.pitchRoadWrap {
+  margin-top: 14px;
+}
+
+.pitchRoad {
+  display: block;
+  width: 100%;
+  height: 156px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.05));
+  border: 1px solid rgba(255,255,255,0.16);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+}
+
+.pitchRoadLegend {
+  margin-top: 8px;
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.badge.btn.metricCell--tone {
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+@media (max-width: 900px) {
+  .hudRowMain {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hudRowStats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .metricCell {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .pitchRoad {
+    height: 170px;
+  }
+
+  .metricCell {
+    min-height: 42px;
+    font-size: 13px;
+    padding-inline: 8px;
+  }
+
+  .metricCell--stars {
+    letter-spacing: 0.5px;
+  }
+}

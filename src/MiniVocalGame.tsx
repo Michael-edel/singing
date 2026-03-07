@@ -5,6 +5,7 @@ import { PitchRingSmule } from './components/PitchRingSmule';
 import { ScoreMeter } from './components/ScoreMeter';
 import PitchRoad, { type PitchGrade, type PitchPoint } from './components/PitchRoad';
 import { PitchEngine } from './audio/PitchEngine';
+import { playReferenceTone as startReferenceTone, type ReferenceToneHandle } from './utils/referenceTone';
 import { useI18n } from './i18n';
 
 const TOTAL_ROUNDS = 5;
@@ -182,6 +183,7 @@ const [holding, setHolding] = useState(false);
   const hzRingCountRef = useRef(0);
   const emaHzRef = useRef<number | null>(null);
   const audioBufferRef = useRef<Parameters<AnalyserNode['getFloatTimeDomainData']>[0] | null>(null);
+  const referenceToneRef = useRef<ReferenceToneHandle | null>(null);
 
   const calibCollectedRef = useRef<number[]>([]);
   const calibStartRef = useRef<number>(0);
@@ -195,6 +197,12 @@ const [holding, setHolding] = useState(false);
   const tracePointsRef = useRef<PitchPoint[]>([]);
   const [pitchRoadPoints, setPitchRoadPoints] = useState<PitchPoint[]>([]);
   const lastRoadTickRef = useRef<number>(0);
+
+  useEffect(() => {
+    return () => {
+      stopReferenceTone();
+    };
+  }, []);
 
   useEffect(() => {
     const h = localStorage.getItem(HISTORY_KEY);
@@ -300,10 +308,10 @@ const [holding, setHolding] = useState(false);
       const p = hz;
 
       // V24: keep PitchRoad alive even before holding (Smule-style live trace)
-      if (stage === 'game' && !autoPaused && res && res.probability >= 0.6 && p > 0) {
+      if (stage === 'game' && !autoPaused && res && res.probability >= 0.45 && rms >= 0.008 && p > 0) {
         const now = performance.now();
         const centsRaw = hzToCentsDiff(p, targetFreq);
-        const cents = clamp(centsRaw, -50, 50);
+        const cents = clamp(centsRaw, -60, 60);
         const grade = gradeFromAbsCents(Math.abs(centsRaw));
         tracePointsRef.current.push({ t: Date.now(), cents, grade });
         const cutoff = Date.now() - 8000;
@@ -374,9 +382,15 @@ const [holding, setHolding] = useState(false);
   };
 
 
+  const stopReferenceTone = () => {
+    try {
+      referenceToneRef.current?.stop();
+    } catch {}
+    referenceToneRef.current = null;
+  };
+
   const playReferenceTone = async () => {
     try {
-      // ensure audio context exists and is resumed (required on iOS)
       if (!audioCtxRef.current) {
         await connectMic();
       }
@@ -384,26 +398,8 @@ const [holding, setHolding] = useState(false);
       if (!ctx) return;
       if (ctx.state === 'suspended') await ctx.resume();
 
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = targetFreq;
-
-      const now = ctx.currentTime;
-      // soft fade-in/out to avoid click
-      gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(0.35, now + 0.03);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.8);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.start(now);
-      osc.stop(now + 0.82);
-      osc.onended = () => {
-        try { osc.disconnect(); } catch {}
-        try { gain.disconnect(); } catch {}
-      };
+      stopReferenceTone();
+      referenceToneRef.current = startReferenceTone(ctx, targetFreq, 60_000, 0.1);
     } catch {}
   };
 
@@ -450,6 +446,7 @@ const [holding, setHolding] = useState(false);
   }, [stage, calibStep]);
 
   const prepareRound = (idx: number) => {
+    stopReferenceTone();
     setRoundIndex(idx);
     const lowMidi = Math.round(12 * Math.log2(range.low / 440) + 69);
     const highMidi = Math.round(12 * Math.log2(range.high / 440) + 69);
@@ -667,6 +664,7 @@ const shareToStories = async () => {
   };
 
   const resetAll = () => {
+    stopReferenceTone();
     setStage('setup');
     setCalibStep('low');
     setCalibLeftMs(CALIBRATION_MS);
@@ -781,11 +779,32 @@ const shareToStories = async () => {
             </div>
 
             <div className="v7Hud">
-              <div className="hudRow">
-                <div className="badge">{t('hud.live')}: <strong>{Math.round(pitch) || 0} Hz</strong></div>
-                <div className="badge">{t('hud.target')}: <strong>{freqToNote(targetFreq)}</strong></div>
-                <button className="badge btn" onClick={playReferenceTone} title={t('hud.playTone')}>🔊 {t('hud.playTone')}</button>
-                <div className="badge"><strong>{'⭐'.repeat(liveStars)}{'☆'.repeat(Math.max(0, 5 - liveStars))}</strong></div>
+              <div className="hudRow hudRowMain">
+                <div className="badge metricCell metricCell--live">{t('hud.live')}: <strong>{Math.round(pitch) || 0} Hz</strong></div>
+                <div className="badge metricCell metricCell--target">{t('hud.target')}: <strong>{freqToNote(targetFreq)}</strong></div>
+                <button
+                  className="badge btn metricCell metricCell--tone"
+                  title={t('hud.playTone')}
+                  onMouseDown={playReferenceTone}
+                  onMouseUp={stopReferenceTone}
+                  onMouseLeave={stopReferenceTone}
+                  onTouchStart={playReferenceTone}
+                  onTouchEnd={stopReferenceTone}
+                  onTouchCancel={stopReferenceTone}
+                  onKeyDown={(e) => {
+                    if (e.key === ' ' || e.key === 'Enter') {
+                      e.preventDefault();
+                      playReferenceTone();
+                    }
+                  }}
+                  onKeyUp={(e) => {
+                    if (e.key === ' ' || e.key === 'Enter') {
+                      e.preventDefault();
+                      stopReferenceTone();
+                    }
+                  }}
+                >🔊 {t('hud.playTone')}</button>
+                <div className="badge metricCell metricCell--stars"><strong>{'⭐'.repeat(liveStars)}{'☆'.repeat(Math.max(0, 5 - liveStars))}</strong></div>
               </div>
 
               {holding ? (
@@ -807,9 +826,9 @@ const shareToStories = async () => {
                 </div>
               )}
 
-              <div className="hudRow">
-                <div className="badge subtle">{t('hud.streak')}: <strong>{streak}</strong></div>
-                <div className="badge subtle">{t('hud.confidence')}: <strong>{Math.round(confidence * 100)}%</strong></div>
+              <div className="hudRow hudRowStats">
+                <div className="badge subtle metricCell metricCell--streak">{t('hud.streak')}: <strong>{streak}</strong></div>
+                <div className="badge subtle metricCell metricCell--confidence">{t('hud.confidence')}: <strong>{Math.round(confidence * 100)}%</strong></div>
               </div>
             </div>
           </div>
