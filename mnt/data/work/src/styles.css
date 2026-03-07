@@ -2104,36 +2104,361 @@ body {
 }
 
 
-/* ---- desktop centering fixes ---- */
-.game{
-  max-width:720px;
+/* Mobile-safe results layout fix */
+.v5Shell{
+  align-items:flex-start;
+  justify-content:flex-start;
+  overflow-y:auto;
+  padding:
+    max(16px, env(safe-area-inset-top))
+    max(16px, env(safe-area-inset-right))
+    max(24px, env(safe-area-inset-bottom))
+    max(16px, env(safe-area-inset-left));
 }
 
-.card{
-  align-items:center;
+.v5Card{
+  margin: 0 auto;
+}
+
+.resultsSection{
+  overflow: hidden;
+}
+
+.resultsSummary p,
+.resultsSection p,
+.resultsSection li{
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+
+.resultsControls{
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-items:end;
+}
+
+.resultsField{
+  display:flex;
+  flex-direction:column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.resultsField > span{
+  font-size: 14px;
+  color: rgba(255,255,255,.82);
+}
+
+.resultsField select{
+  width: 100%;
+  min-width: 0;
+}
+
+.resultsLinkBlock{
+  display:flex;
+  flex-direction:column;
+  gap: 8px;
+}
+
+.resultsLinkLabel{
+  font-size: 14px;
+  color: rgba(255,255,255,.82);
+}
+
+.resultsLink{
+  display:block;
+  min-width: 0;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+  line-height: 1.35;
+}
+
+.resultsActions{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.resultsActions > button,
+.resultsActions > .dm,
+.resultsResetBtn{
+  width: 100%;
+  justify-content:center;
   text-align:center;
 }
 
-/* HUD stability */
-.hudValue{
+@media (max-width: 640px){
+  .v5Shell{
+    padding:
+      max(12px, env(safe-area-inset-top))
+      max(12px, env(safe-area-inset-right))
+      max(28px, env(safe-area-inset-bottom))
+      max(12px, env(safe-area-inset-left));
+  }
+
+  .v5Card{
+    width: 100%;
+    padding: 16px 14px 18px;
+    border-radius: 20px;
+  }
+
+  .v5Card > h1{
+    margin: 0 0 14px;
+    font-size: clamp(32px, 10vw, 56px);
+    line-height: .98;
+    overflow-wrap:anywhere;
+  }
+
+  .resultsControls,
+  .resultsActions{
+    grid-template-columns: 1fr;
+  }
+
+  .shareRow{
+    gap: 12px;
+  }
+}
+
+/* ---- MiniVocalGame desktop/mobile cleanup ---- */
+.v5Card > h1{
+  margin: 0 0 14px;
+  text-align: center;
+}
+
+.stageCenter{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+}
+
+.stageNarrow{
+  max-width: 620px;
+  margin: 0 auto;
+}
+
+.homeGameSetup,
+.calibrationScreen,
+.gameSection{
+  text-align:center;
+}
+
+.homeGamePrimary,
+.homeGameAdvanced,
+.difficultyActions{
+  width:100%;
+}
+
+.homeGameMicBtn.compact{
+  width:auto;
+  min-width: 180px;
+}
+
+.difficultyCards{
+  width:100%;
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.difficultyCard{
+  width:100%;
+  min-height: 120px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.92);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  gap: 8px;
+}
+
+.difficultyCard.active{
+  background: rgba(101,125,255,0.18);
+  border-color: rgba(130,160,255,0.45);
+  box-shadow: 0 0 0 1px rgba(130,160,255,0.18) inset;
+}
+
+.calibrationStepPill{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 10px;
+}
+
+.calibrationBody{
+  max-width: 560px;
+  margin: 0 auto 12px;
+  color: rgba(255,255,255,0.78);
+}
+
+.calibrationChecklist{
+  width:100%;
+  max-width: 560px;
+  display:grid;
+  gap: 10px;
+  text-align:left;
+  margin: 10px auto 18px;
+  color: rgba(255,255,255,0.85);
+}
+
+.calibrationTimer{
+  font-size: 24px;
+  font-weight: 800;
+  margin-bottom: 14px;
+}
+
+.calibrationLiveGrid,
+.hudGrid{
+  display:grid;
+  gap: 10px;
+}
+
+.calibrationLiveGrid{
+  width:100%;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.hudGridMain{
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
+}
+
+.hudGridStats{
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  max-width: 360px;
+}
+
+.metricCell{
+  min-height: 62px;
+  display:grid;
+  grid-template-rows: 14px 22px;
+  align-content:center;
+  justify-items:center;
+  gap: 8px;
+  text-align:center;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
-  line-height:1;
 }
 
-/* stars fixed width */
-.stars{
-  width:90px;
-  display:flex;
-  justify-content:center;
-  gap:4px;
+.metricCell--centered{
+  width:100%;
 }
 
-/* container center */
-.v5Shell{
-  min-height:100vh;
+.metricLabel{
+  display:block;
+  width:100%;
+  font-size: 11px;
+  line-height: 1;
+  color: rgba(255,255,255,0.62);
+  white-space: nowrap;
+}
+
+.metricValue{
   display:flex;
   align-items:center;
   justify-content:center;
-  padding:32px;
+  width:100%;
+  min-height: 22px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.metricStars{
+  min-width: 92px;
+  gap: 4px;
+}
+
+.metricStars span{
+  display:inline-block;
+  width: 12px;
+  text-align:center;
+}
+
+.v7Hud .btn.metricCell{
+  border-radius: 12px;
+  width:100%;
+}
+
+.gameSection h2,
+.v6Section h2,
+.resultsSection h2{
+  text-align:center;
+  margin-top: 0;
+}
+
+.resultsSummary p,
+.resultsSection p,
+.resultsSection h3,
+.resultsSection ul,
+.resultsSection ol{
+  text-align:left;
+}
+
+.calibrationWarning,
+.calibrationNotice{
+  width:100%;
+  max-width: 560px;
+  margin: 10px auto;
+  padding: 12px 14px;
+  border-radius: 14px;
+}
+
+.calibrationWarning{
+  background: rgba(255,120,120,0.12);
+  border: 1px solid rgba(255,120,120,0.22);
+}
+
+.calibrationNotice{
+  background: rgba(120,255,180,0.10);
+  border: 1px solid rgba(120,255,180,0.18);
+}
+
+.pitchRoadWrap{
+  margin-top: 10px;
+}
+
+.pitchRoad{
+  width:100%;
+  height: 170px;
+  display:block;
+}
+
+.hold,
+.resultsActions button,
+.resultsActions .dm{
+  width:100%;
+  justify-content:center;
+}
+
+@media (max-width: 860px){
+  .difficultyCards,
+  .calibrationLiveGrid,
+  .hudGridMain,
+  .hudGridStats{
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 620px){
+  .difficultyCards,
+  .calibrationLiveGrid,
+  .hudGridMain,
+  .hudGridStats{
+    grid-template-columns: 1fr;
+  }
+
+  .metricLabel,
+  .metricValue{
+    white-space: normal;
+  }
 }
