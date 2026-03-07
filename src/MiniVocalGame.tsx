@@ -729,7 +729,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
 
   const finishGame = (finalRounds: RoundResult[]) => {
     const finalScore = finalRounds.reduce((a: number, r: RoundResult) => a + r.score, 0) / finalRounds.length;
-    const level = levelFromScore(finalScore);
+    const level = levelKeyFromScore(finalScore);
     const record: HistoryRecord = {
       date: new Date().toISOString(),
       score: Math.round(finalScore),
@@ -1160,7 +1160,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
             </div>
 
             <h3>{t('results.lastGames')}</h3>
-            <ul>{history.map((h: HistoryRecord) => <li key={h.date}>{new Date(h.date).toLocaleString()} — {h.score} ({h.level})</li>)}</ul>
+            <ul>{history.map((h: HistoryRecord) => <li key={h.date}>{new Date(h.date).toLocaleString()} — {h.score} ({t(h.level)})</li>)}</ul>
             <p>{t('results.dailyStreak')}: {streak} 🔥</p>
 
             <h3>{t('results.weekly')}</h3>

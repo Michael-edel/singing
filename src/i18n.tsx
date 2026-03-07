@@ -536,7 +536,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
       let value = dict[key] ?? DICTS.ru[key] ?? key;
       if (vars) {
         Object.entries(vars).forEach(([k, v]) => {
-          value = value.replaceAll(`{${k}}`, String(v));
+          value = value.split(`{${k}}`).join(String(v));
         });
       }
       return value;
