@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef } from "react";
-import { useI18n } from "../i18n";
 
 export type PitchGrade = "perfect" | "great" | "good" | "bad";
 
@@ -12,23 +11,36 @@ export type PitchPoint = {
 type Props = {
   points: PitchPoint[];
   windowMs?: number;
+  targetFreq?: number;
 };
 
 const colorFor = (g: PitchGrade) => {
   switch (g) {
     case "perfect":
-      return "#22c55e";
+      return "rgba(255,215,0,0.95)";
     case "great":
-      return "#06b6d4";
+      return "rgba(0,255,213,0.95)";
     case "good":
-      return "#facc15";
+      return "rgba(135,206,235,0.95)";
     default:
-      return "#ef4444";
+      return "rgba(255,99,71,0.90)";
   }
 };
 
-export default function PitchRoad({ points, windowMs = 4000 }: Props) {
-  const { t } = useI18n();
+const noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+
+function hzToMidi(freq: number) {
+  return 69 + 12 * Math.log2(freq / 440);
+}
+
+function noteNameForMidi(midi: number) {
+  const rounded = Math.round(midi);
+  const note = noteNames[((rounded % 12) + 12) % 12];
+  const octave = Math.floor(rounded / 12) - 1;
+  return `${note}${octave}`;
+}
+
+export default function PitchRoad({ points, windowMs = 4500, targetFreq = 220 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const normalized = useMemo(() => {
@@ -37,7 +49,7 @@ export default function PitchRoad({ points, windowMs = 4000 }: Props) {
     const start = end - windowMs;
     return points
       .filter((p) => p.t >= start)
-      .map((p) => ({ ...p, cents: Math.max(-60, Math.min(60, p.cents)) }));
+      .map((p) => ({ ...p, cents: Math.max(-400, Math.min(400, p.cents)) }));
   }, [points, windowMs]);
 
   useEffect(() => {
@@ -47,9 +59,9 @@ export default function PitchRoad({ points, windowMs = 4000 }: Props) {
     if (!ctx) return;
 
     const rect = canvas.getBoundingClientRect();
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
     const cssWidth = Math.max(280, Math.round(rect.width || 720));
-    const cssHeight = Math.max(110, Math.round(rect.height || 150));
+    const cssHeight = Math.max(128, Math.round(rect.height || 168));
     if (canvas.width !== cssWidth * dpr || canvas.height !== cssHeight * dpr) {
       canvas.width = cssWidth * dpr;
       canvas.height = cssHeight * dpr;
@@ -60,89 +72,99 @@ export default function PitchRoad({ points, windowMs = 4000 }: Props) {
     const h = cssHeight;
     ctx.clearRect(0, 0, w, h);
 
-    const gradBg = ctx.createLinearGradient(0, 0, 0, h);
-    gradBg.addColorStop(0, "rgba(255,255,255,0.08)");
-    gradBg.addColorStop(1, "rgba(255,255,255,0.02)");
-    ctx.fillStyle = gradBg;
-    ctx.fillRect(0, 0, w, h);
+    const targetMidi = Math.round(hzToMidi(targetFreq));
+    const gridMidis: number[] = [];
+    for (let i = -4; i <= 4; i += 1) gridMidis.push(targetMidi + i);
 
-    const mid = h / 2;
-    const centsToY = (c: number) => mid - c * (h / 145);
+    const midiToY = (midi: number) => {
+      const topMidi = targetMidi + 4;
+      const bottomMidi = targetMidi - 4;
+      const ratio = (topMidi - midi) / (topMidi - bottomMidi || 1);
+      return 12 + ratio * (h - 24);
+    };
 
-    for (const band of [0, 10, 30, 50]) {
-      const alpha = band === 0 ? 0.34 : band === 10 ? 0.22 : 0.12;
-      const yTop = centsToY(band);
-      const yBottom = centsToY(-band);
-      ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
-      ctx.lineWidth = band === 0 ? 2 : 1;
+    const centsToY = (cents: number) => midiToY(targetMidi + cents / 100);
+
+    ctx.font = "500 11px system-ui, sans-serif";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+
+    gridMidis.forEach((midi) => {
+      const y = midiToY(midi);
+      const isTarget = midi === targetMidi;
+      ctx.strokeStyle = isTarget ? "rgba(255,255,255,0.36)" : "rgba(255,255,255,0.12)";
+      ctx.lineWidth = isTarget ? 2 : 1;
       ctx.beginPath();
-      ctx.moveTo(10, yTop);
-      ctx.lineTo(w - 10, yTop);
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
       ctx.stroke();
-      if (band !== 0) {
-        ctx.beginPath();
-        ctx.moveTo(10, yBottom);
-        ctx.lineTo(w - 10, yBottom);
-        ctx.stroke();
-      }
-    }
 
-    const endT = normalized.length ? normalized[normalized.length - 1].t : performance.now();
-    const startT = endT - windowMs;
-    const xForT = (t: number) => Math.max(10, Math.min(w - 10, ((t - startT) / windowMs) * (w - 20) + 10));
+      ctx.fillStyle = isTarget ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.48)";
+      ctx.fillText(noteNameForMidi(midi), 8, y - 10);
+    });
 
     if (!normalized.length) {
-      ctx.fillStyle = "rgba(255,255,255,0.72)";
+      ctx.fillStyle = "rgba(255,255,255,0.62)";
       ctx.font = "600 14px system-ui, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(t("pitch.roadEmpty") || "Sing to see your pitch road", w / 2, mid + 4);
+      ctx.fillText("Спойте ноту, чтобы увидеть дорожку", w / 2, h / 2 + 5);
       return;
     }
 
+    const endT = normalized[normalized.length - 1].t;
+    const startT = endT - windowMs;
+    const xForT = (t: number) => Math.max(8, Math.min(w - 8, ((t - startT) / windowMs) * w));
+
+    if (normalized.length < 2) {
+      const only = normalized[0];
+      const c = colorFor(only.grade);
+      ctx.fillStyle = c;
+      ctx.shadowColor = c;
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(xForT(only.t), centsToY(only.cents), 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      return;
+    }
+
+    ctx.lineWidth = 4;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-
     for (let i = 1; i < normalized.length; i += 1) {
       const a = normalized[i - 1];
       const b = normalized[i];
-      if (b.t - a.t > 320) continue;
-      const color = colorFor(b.grade);
-      ctx.strokeStyle = color;
-      ctx.shadowColor = color;
-      ctx.shadowBlur = 10;
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.moveTo(xForT(a.t), centsToY(a.cents));
-      ctx.lineTo(xForT(b.t), centsToY(b.cents));
-      ctx.stroke();
-
-      ctx.shadowBlur = 0;
-      ctx.strokeStyle = "rgba(255,255,255,0.20)";
-      ctx.lineWidth = 1;
+      if (b.t - a.t > 350) continue;
+      const c = colorFor(b.grade);
+      ctx.strokeStyle = c;
+      ctx.shadowColor = c;
+      ctx.shadowBlur = 8;
       ctx.beginPath();
       ctx.moveTo(xForT(a.t), centsToY(a.cents));
       ctx.lineTo(xForT(b.t), centsToY(b.cents));
       ctx.stroke();
     }
+    ctx.shadowBlur = 0;
 
     const last = normalized[normalized.length - 1];
     const lastColor = colorFor(last.grade);
     ctx.fillStyle = lastColor;
     ctx.shadowColor = lastColor;
-    ctx.shadowBlur = 12;
+    ctx.shadowBlur = 10;
     ctx.beginPath();
-    ctx.arc(xForT(last.t), centsToY(last.cents), 5.5, 0, Math.PI * 2);
+    ctx.arc(xForT(last.t), centsToY(last.cents), 5, 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowBlur = 0;
-  }, [normalized, t, windowMs]);
+  }, [normalized, targetFreq, windowMs]);
 
   return (
-    <div className="pitchRoadWrap pitchRoadWrap--v2">
-      <canvas ref={canvasRef} className="pitchRoad pitchRoad--v2" />
+    <div className="pitchRoadWrap">
+      <canvas ref={canvasRef} className="pitchRoad" />
       <div className="pitchRoadLegend" aria-hidden>
-        <span>🟢 {t("pitch.perfect") || "Perfect"}</span>
-        <span>🟡 {t("pitch.close") || "Close"}</span>
-        <span>🔴 {t("pitch.off") || "Off"}</span>
+        <span>⭐ идеально</span>
+        <span>✨ отлично</span>
+        <span>👍 нормально</span>
+        <span>• мимо</span>
       </div>
     </div>
   );

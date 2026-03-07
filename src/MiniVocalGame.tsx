@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PitchRingSmule } from './components/PitchRingSmule';
 import { ScoreMeter } from './components/ScoreMeter';
-import HUDPanel from './components/HUDPanel';
 import PitchRoad, { type PitchGrade, type PitchPoint } from './components/PitchRoad';
 import { PitchEngine } from './audio/PitchEngine';
 import { playReferenceTone as startReferenceTone, type ReferenceToneHandle } from './utils/referenceTone';
@@ -18,6 +17,7 @@ const ROAD_CULL_MS = 4500;
 const HISTORY_KEY = 'mini-vocal-history';
 const STREAK_KEY = 'mini-vocal-streak';
 const BOARD_KEY = 'mini-vocal-weekly-board';
+const CALIBRATION_KEY_PREFIX = 'mini-vocal-calibration';
 
 type Stage = 'setup' | 'difficulty' | 'calibration' | 'game' | 'results';
 type Difficulty = 'newbie' | 'pro';
@@ -47,6 +47,13 @@ type LeaderRecord = {
 type VocalRange = {
   low: number | null;
   high: number | null;
+};
+
+type SavedCalibration = {
+  low: number;
+  high: number;
+  updatedAt: string;
+  version: number;
 };
 
 function gradeFromAbsCents(absCents: number): PitchGrade {
@@ -180,6 +187,39 @@ function pickTargetFrequency(range: VocalRange, difficulty: Difficulty, roundInd
   return midiToHz(midi);
 }
 
+function calibrationStorageKey(userId?: string) {
+  return `${CALIBRATION_KEY_PREFIX}:${userId || 'guest'}`;
+}
+
+function loadSavedCalibration(userId?: string): SavedCalibration | null {
+  try {
+    const raw = localStorage.getItem(calibrationStorageKey(userId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<SavedCalibration>;
+    if (typeof parsed.low !== 'number' || typeof parsed.high !== 'number') return null;
+    if (!isRangeValid(parsed.low, parsed.high)) return null;
+    return {
+      low: parsed.low,
+      high: parsed.high,
+      updatedAt: typeof parsed.updatedAt === 'string' ? parsed.updatedAt : new Date().toISOString(),
+      version: typeof parsed.version === 'number' ? parsed.version : 1,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function saveCalibration(userId: string | undefined, range: VocalRange) {
+  if (!isRangeValid(range.low, range.high)) return;
+  const payload: SavedCalibration = {
+    low: range.low as number,
+    high: range.high as number,
+    updatedAt: new Date().toISOString(),
+    version: 1,
+  };
+  localStorage.setItem(calibrationStorageKey(userId), JSON.stringify(payload));
+}
+
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -196,6 +236,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
   const [micReady, setMicReady] = useState(false);
   const [showAdvancedSetup, setShowAdvancedSetup] = useState(false);
   const [hasCalibration, setHasCalibration] = useState(false);
+  const [savedCalibrationInfo, setSavedCalibrationInfo] = useState<SavedCalibration | null>(null);
   const [calibrationError, setCalibrationError] = useState<string>('');
   const [showOnboarding, setShowOnboarding] = useState(() => {
     try { return localStorage.getItem('mv_onboard_v21') !== '1'; } catch { return true; }
@@ -269,6 +310,16 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
   const [pitchRoadPoints, setPitchRoadPoints] = useState<PitchPoint[]>([]);
   const lastRoadTickRef = useRef<number>(0);
 
+  useEffect(() => {
+    const savedCalibration = loadSavedCalibration(user?.id);
+    if (!savedCalibration) return;
+    const restoredRange = { low: savedCalibration.low, high: savedCalibration.high };
+    setRange(restoredRange);
+    rangeRef.current = restoredRange;
+    setHasCalibration(true);
+    setSavedCalibrationInfo(savedCalibration);
+  }, [user?.id]);
+
   useEffect(() => { stageRef.current = stage; }, [stage]);
   useEffect(() => { difficultyRef.current = difficulty; }, [difficulty]);
   useEffect(() => { calibStepRef.current = calibStep; }, [calibStep]);
@@ -292,6 +343,15 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
     setHistory(Array.isArray(h) ? h : []);
     setStreak(typeof s.count === 'number' ? s.count : 0);
     setLeaderboard(Array.isArray(b) ? b : []);
+
+    const savedCalibration = loadSavedCalibration(user?.id);
+    if (savedCalibration) {
+      const restoredRange = { low: savedCalibration.low, high: savedCalibration.high };
+      setRange(restoredRange);
+      rangeRef.current = restoredRange;
+      setHasCalibration(true);
+      setSavedCalibrationInfo(savedCalibration);
+    }
 
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -593,7 +653,10 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
 
         const finalRange = { low, high } as VocalRange;
         setRange(finalRange);
+        rangeRef.current = finalRange;
         setHasCalibration(true);
+        saveCalibration(user?.id, finalRange);
+        setSavedCalibrationInfo({ low: finalRange.low as number, high: finalRange.high as number, updatedAt: new Date().toISOString(), version: 1 });
         setCalibrationPreview(captured);
         setCalibrationPhase('captured');
         setCalibStep('done');
@@ -621,6 +684,11 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
 
   const confirmDifficulty = async () => {
     if (!micReady) await connectMic();
+    if (hasCalibration && isRangeValid(rangeRef.current.low, rangeRef.current.high)) {
+      setStage('game');
+      prepareRound(0);
+      return;
+    }
     await beginCalibration();
   };
 
@@ -690,13 +758,13 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
     stopHold();
     const samples = centsSamplesRef.current;
     const avgAbsCents = samples.length
-      ? samples.reduce((a, b) => a + Math.abs(b), 0) / samples.length
+      ? samples.reduce((a: number, b: number) => a + Math.abs(b), 0) / samples.length
       : 1200;
     const meanSigned = samples.length
-      ? samples.reduce((a, b) => a + b, 0) / samples.length
+      ? samples.reduce((a: number, b: number) => a + b, 0) / samples.length
       : 0;
     const stdev = samples.length
-      ? Math.sqrt(samples.reduce((acc, c) => acc + (c - meanSigned) ** 2, 0) / samples.length)
+      ? Math.sqrt(samples.reduce((acc: number, c: number) => acc + (c - meanSigned) ** 2, 0) / samples.length)
       : 200;
 
     const currentDifficulty = difficultyRef.current;
@@ -717,7 +785,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
       score,
     };
 
-    setResults((prev) => {
+    setResults((prev: RoundResult[]) => {
       const next: RoundResult[] = [...prev, one];
       if (next.length >= TOTAL_ROUNDS) {
         finishGame(next);
@@ -885,13 +953,24 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
 
   const resetAll = () => {
     stopReferenceTone();
+    const savedCalibration = loadSavedCalibration(user?.id);
     setStage('setup');
     setCalibStep('low');
     setCalibrationPhase('intro');
     setCalibrationPreview(null);
     setCalibLeftMs(CALIBRATION_MS);
-    setRange({ low: null, high: null });
-    setHasCalibration(false);
+    if (savedCalibration) {
+      const restoredRange = { low: savedCalibration.low, high: savedCalibration.high };
+      setRange(restoredRange);
+      rangeRef.current = restoredRange;
+      setHasCalibration(true);
+      setSavedCalibrationInfo(savedCalibration);
+    } else {
+      setRange({ low: null, high: null });
+      rangeRef.current = { low: null, high: null };
+      setHasCalibration(false);
+      setSavedCalibrationInfo(null);
+    }
     setCalibrationError('');
     setRoundIndex(0);
     setResults([]);
@@ -957,9 +1036,23 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
                 <span className="homeGameMicText">{micReady ? 'Дальше' : 'Включить микрофон'}</span>
               </button>
               <div className="homeGameHint">
-                {micReady ? 'Микрофон готов. Дальше будет выбор сложности и калибровка.' : 'При первом запуске нужно разрешить доступ к микрофону.'}
+                {micReady
+                  ? hasCalibration
+                    ? 'Микрофон готов. Можно играть с сохранённой калибровкой или пройти её заново.'
+                    : 'Микрофон готов. Дальше будет выбор сложности и калибровка.'
+                  : 'При первом запуске нужно разрешить доступ к микрофону.'}
               </div>
             </div>
+
+            {hasCalibration && savedCalibrationInfo ? (
+              <div className="savedCalibrationBanner">
+                <div><b>Сохранённая калибровка найдена.</b> Диапазон: {freqToNote(range.low || 0)} — {freqToNote(range.high || 0)}</div>
+                <div className="savedCalibrationActions">
+                  <button type="button" onClick={startGameFromSetup}>Играть сразу</button>
+                  <button type="button" className="ghostBtn" onClick={beginCalibration}>Перекалибровать</button>
+                </div>
+              </div>
+            ) : null}
 
             <button type="button" className="homeGameAdvancedToggle" onClick={() => setShowAdvancedSetup((v: boolean) => !v)}>
               {showAdvancedSetup ? 'Скрыть настройки' : 'Настройки'}
@@ -1064,19 +1157,12 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
               </div>
 
               <div className="v7Hud">
-                <HUDPanel
-                  liveHz={pitch}
-                  targetNote={freqToNote(targetFreq)}
-                  stars={liveStars}
-                  confidence={confidence}
-                  streak={streak}
-                />
-
-                <div className="toneRowV2">
+                <div className="hudRow hudRowMain">
+                  <div className="badge metricCell metricCell--live"><span className="metricLabel">{t('hud.live')}</span><strong className="metricValue">{Math.round(pitch) || 0} Hz</strong></div>
+                  <div className="badge metricCell metricCell--target"><span className="metricLabel">{t('hud.target')}</span><strong className="metricValue">{freqToNote(targetFreq)}</strong></div>
                   <button
                     className="badge btn metricCell metricCell--tone"
                     title={t('hud.playTone')}
-                    onContextMenu={(e) => e.preventDefault()}
                     onMouseDown={playReferenceTone}
                     onMouseUp={stopReferenceTone}
                     onMouseLeave={stopReferenceTone}
@@ -1096,6 +1182,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
                       }
                     }}
                   >🔊 {t('hud.playTone')}</button>
+                  <div className="badge metricCell metricCell--stars"><div className="starsRow">{Array.from({ length: 5 }, (_, i) => <span key={i} className={i < liveStars ? 'star star--on' : 'star'}>{i < liveStars ? '★' : '☆'}</span>)}</div></div>
                 </div>
 
                 {holding ? (
@@ -1114,10 +1201,15 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
                     {lastRoundScore !== null ? <div className="hintScore">{t('hud.roundScore')}: <strong>{lastRoundScore}</strong></div> : null}
                   </div>
                 )}
+
+                <div className="hudRow hudRowStats">
+                  <div className="badge subtle metricCell metricCell--streak"><span className="metricLabel">{t('hud.streak')}</span><strong className="metricValue">{streak}</strong></div>
+                  <div className="badge subtle metricCell metricCell--confidence"><span className="metricLabel">{t('hud.confidence')}</span><strong className="metricValue">{Math.round(confidence * 100)}%</strong></div>
+                </div>
               </div>
             </div>
 
-            <PitchRoad points={pitchRoadPoints} windowMs={4500} />
+            <PitchRoad points={pitchRoadPoints} windowMs={4500} targetFreq={targetFreq} />
 
             <p>{volumeHint}</p>
             {autoPaused ? (
@@ -1148,20 +1240,36 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
               <div className="resultRow"><span>Итоговый счёт</span><strong>{finalScore}</strong></div>
               <div className="resultRow"><span>Награда</span><strong>{'⭐'.repeat(starsFromScore(finalScore))}</strong></div>
               <div className="resultRow"><span>Уровень</span><strong>{level}</strong></div>
-              <div className="resultRow resultRow--text"><span>Разбор</span><div>{offer}</div></div>
+              <div className="resultRow resultRow--text"><span>Оффер</span><div>{offer}</div></div>
+              <div className="resultRow resultRow--text"><span>Приз</span><div>🎁 Напишите «ХОЧУ ПРИЗ» в DM и получите бонус-упражнение.</div></div>
+              <div className="resultRow resultRow--text"><span>Авто-DM</span><div>«Привет! Прошёл челлендж, хочу разбор голоса и план занятий».</div></div>
             </div>
 
-            <div className="studioCtaCard">
-              <div className="studioCtaEyebrow">Studio CTA</div>
-              <h3>{t('results.studioCta')}</h3>
-              <div className="shareRow">
-                <button onClick={shareToStories}>Поделиться в Stories</button>
-                <button onClick={shareResultText}>Поделиться текстом</button>
-                <a className="dm" href={`https://ig.me/m/vocal.jivoizvuk.ekb?text=${dmText}`} target="_blank" rel="noreferrer">{t('results.bookLesson')}</a>
-              </div>
+            <div className="resultControls">
+              <label>
+                <span>Стиль карточки</span>
+                <select value={cardStyle} onChange={(e) => setCardStyle(e.target.value as CardStyle)}>
+                  <option value="minimal">Минимал</option>
+                  <option value="neon">Неон</option>
+                  <option value="karaoke">Караоке</option>
+                </select>
+              </label>
+
+              <label>
+                <span>UTM шаблон</span>
+                <select value={template} onChange={(e) => setTemplate(e.target.value as 'template_a' | 'template_b')}>
+                  <option value="template_a">Шаблон A</option>
+                  <option value="template_b">Шаблон B</option>
+                </select>
+              </label>
             </div>
 
             <p className="linkWrap">Ссылка для стикера: <a href={utmUrl} target="_blank" rel="noreferrer">{utmUrl}</a></p>
+            <div className="shareRow">
+              <button onClick={shareToStories}>Поделиться в Stories</button>
+              <button onClick={shareResultText}>Поделиться текстом</button>
+              <a className="dm" href={`https://ig.me/m/vocal.jivoizvuk.ekb?text=${dmText}`} target="_blank" rel="noreferrer">Открыть DM с текстом</a>
+            </div>
 
             <h3>Последние игры</h3>
             <ul>{history.map((h: HistoryRecord) => <li key={h.date}>{new Date(h.date).toLocaleString()} — {h.score} ({h.level})</li>)}</ul>
