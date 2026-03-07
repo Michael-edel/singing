@@ -7,18 +7,16 @@ import { playReferenceTone as startReferenceTone, type ReferenceToneHandle } fro
 import { useI18n } from './i18n';
 
 const TOTAL_ROUNDS = 5;
-const CALIBRATION_MS = 4500;
+const CALIBRATION_MS = 6000;
 const ROUND_MS = 2500;
 const SILENCE_AUTOPAUSE_MS = 1000;
 const HISTORY_KEY = 'mini-vocal-history';
 const STREAK_KEY = 'mini-vocal-streak';
 const BOARD_KEY = 'mini-vocal-weekly-board';
 
-type Stage = 'setup' | 'difficulty' | 'calibration' | 'game' | 'results';
+type Stage = 'setup' | 'calibration' | 'game' | 'results';
 type Difficulty = 'newbie' | 'pro';
 type CalibStep = 'low' | 'high' | 'done';
-type CalibrationPhase = 'intro' | 'recording' | 'captured';
-type CardStyle = 'minimal' | 'neon' | 'karaoke';
 
 type RoundResult = {
   targetFreq: number;
@@ -36,6 +34,7 @@ type HistoryRecord = {
 
 type LeaderRecord = {
   id: string;
+  name: string;
   score: number;
 };
 
@@ -179,14 +178,30 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function getUserDisplayName(user: any): string {
+  const candidates = [user?.name, user?.displayName, user?.fullName, user?.username, user?.email];
+  for (const value of candidates) {
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  if (typeof user?.id === 'string' && user.id.trim()) return `Игрок ${user.id.slice(0, 6)}`;
+  return 'Гость';
+}
+
+function currentWeekTag(date = new Date()): string {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+}
+
 export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onSubmitScore?: (p: { score: number; accuracy: number }) => void }) {
   const { t } = useI18n();
   const [stage, setStage] = useState<Stage>('setup');
   const [difficulty, setDifficulty] = useState<Difficulty>('newbie');
   const [calibStep, setCalibStep] = useState<CalibStep>('low');
   const [calibLeftMs, setCalibLeftMs] = useState(CALIBRATION_MS);
-  const [calibrationPhase, setCalibrationPhase] = useState<CalibrationPhase>('intro');
-  const [calibrationPreview, setCalibrationPreview] = useState<number | null>(null);
   const [range, setRange] = useState<VocalRange>({ low: null, high: null });
   const [micReady, setMicReady] = useState(false);
   const [showAdvancedSetup, setShowAdvancedSetup] = useState(false);
@@ -208,8 +223,6 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
   const [history, setHistory] = useState<HistoryRecord[]>([]);
   const [streak, setStreak] = useState(0);
   const [leaderboard, setLeaderboard] = useState<LeaderRecord[]>([]);
-  const [cardStyle, setCardStyle] = useState<CardStyle>('minimal');
-  const [template, setTemplate] = useState<'template_a' | 'template_b'>('template_a');
   const [liveAccuracy, setLiveAccuracy] = useState(0);
   const [holdProgress, setHoldProgress] = useState(0);
   const [lastRoundScore, setLastRoundScore] = useState<number | null>(null);
@@ -224,16 +237,12 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
   const difficultyRef = useRef(difficulty);
   const calibStepRef = useRef(calibStep);
   const rangeRef = useRef(range);
-  const calibrationPhaseRef = useRef(calibrationPhase);
   const targetFreqRef = useRef(targetFreq);
   const holdingRef = useRef(holding);
   const autoPausedRef = useRef(autoPaused);
   const roundIndexRef = useRef(roundIndex);
   const submittedRef = useRef(false);
   const lastUiTickRef = useRef(0);
-  const lastPitchRef = useRef(0);
-  const lastConfidenceRef = useRef(0);
-  const lastVolumeRef = useRef(0);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -268,7 +277,6 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
   useEffect(() => { difficultyRef.current = difficulty; }, [difficulty]);
   useEffect(() => { calibStepRef.current = calibStep; }, [calibStep]);
   useEffect(() => { rangeRef.current = range; }, [range]);
-  useEffect(() => { calibrationPhaseRef.current = calibrationPhase; }, [calibrationPhase]);
   useEffect(() => { targetFreqRef.current = targetFreq; }, [targetFreq]);
   useEffect(() => { holdingRef.current = holding; }, [holding]);
   useEffect(() => { autoPausedRef.current = autoPaused; }, [autoPaused]);
@@ -364,8 +372,8 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
       const res = pitchEngineRef.current.process(buffer);
       const rms = res?.rms ?? 0;
       const prob = res?.probability ?? 0;
-      lastConfidenceRef.current = res ? res.probability : 0;
-      lastVolumeRef.current = rms;
+      setConfidence(res ? res.probability : 0);
+      setVolume(rms);
 
       const voiced = !!res && prob >= 0.6 && rms >= 0.012;
       let hz = voiced ? res!.hz : 0;
@@ -402,7 +410,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
         resetPitchSmoothing();
       }
 
-      lastPitchRef.current = hz;
+      setPitch(hz);
       const p = hz;
       const currentStage = stageRef.current;
       const currentTarget = targetFreqRef.current;
@@ -425,7 +433,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
         }
       }
 
-      if (currentStage === 'calibration' && calibrationPhaseRef.current === 'recording') {
+      if (currentStage === 'calibration') {
         if (p > 0 && prob >= 0.55 && rms >= 0.01) {
           calibCollectedRef.current.push(p);
         }
@@ -455,9 +463,6 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
 
         if (now - (lastUiTickRef.current || 0) > 100) {
           lastUiTickRef.current = now;
-          setPitch(lastPitchRef.current);
-          setConfidence(lastConfidenceRef.current);
-          setVolume(lastVolumeRef.current);
           setLiveAccuracy(Math.round(accuracyPct));
           setHoldProgress(progress);
         }
@@ -465,13 +470,6 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
         if (elapsedHold >= ROUND_MS) {
           finishRound();
         }
-      }
-
-      if (performance.now() - (lastUiTickRef.current || 0) > 100 && (!isHolding || isAutoPaused || currentStage !== 'game')) {
-        lastUiTickRef.current = performance.now();
-        setPitch(lastPitchRef.current);
-        setConfidence(lastConfidenceRef.current);
-        setVolume(lastVolumeRef.current);
       }
 
       rafRef.current = requestAnimationFrame(tick);
@@ -520,24 +518,9 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
     setRange({ low: null, high: null });
     setStage('calibration');
     setCalibStep('low');
-    setCalibrationPhase('intro');
-    setCalibrationPreview(null);
-    setCalibLeftMs(CALIBRATION_MS);
-    calibCollectedRef.current = [];
-  };
-
-  const startCalibrationStep = () => {
-    setCalibrationError('');
-    setCalibrationPhase('recording');
-    setCalibrationPreview(null);
     setCalibLeftMs(CALIBRATION_MS);
     calibCollectedRef.current = [];
     calibStartRef.current = performance.now();
-  };
-
-  const moveToDifficulty = async () => {
-    if (!micReady) await connectMic();
-    setStage('difficulty');
   };
 
   const finalizeCalibrationStep = (step: CalibStep) => {
@@ -549,7 +532,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
   };
 
   useEffect(() => {
-    if (stage !== 'calibration' || calibStep === 'done' || calibrationPhase !== 'recording') return;
+    if (stage !== 'calibration' || calibStep === 'done') return;
 
     let timer = 0;
     const loop = () => {
@@ -560,38 +543,36 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
       if (left <= 0) {
         const captured = finalizeCalibrationStep(calibStepRef.current);
 
-        if (!captured) {
-          setCalibrationPreview(null);
-          setCalibrationPhase('intro');
-          setCalibrationError('Калибровка не удалась. Пойте громче и стабильнее.');
-          return;
-        }
-
         if (calibStepRef.current === 'low') {
+          if (!captured) {
+            setCalibrationError('Calibration failed. Please sing louder and steadier.');
+            setStage('setup');
+            return;
+          }
           setRange({ low: captured, high: null });
-          setCalibrationPreview(captured);
-          setCalibrationPhase('captured');
+          setCalibStep('high');
+          calibStartRef.current = performance.now();
+          setCalibLeftMs(CALIBRATION_MS);
           return;
         }
 
         const low = rangeRef.current.low;
         const high = captured;
-        if (!isRangeValid(low, high)) {
+        if (!captured || !isRangeValid(low, high)) {
           setHasCalibration(false);
           setRange({ low: null, high: null });
-          setCalibrationPreview(null);
-          setCalibrationPhase('intro');
+          setCalibrationError('Calibration failed. Please sing louder and try again.');
+          setStage('setup');
           setCalibStep('low');
-          setCalibrationError('Диапазон определён неверно. Повторите калибровку громче и ровнее.');
           return;
         }
 
         const finalRange = { low, high } as VocalRange;
         setRange(finalRange);
         setHasCalibration(true);
-        setCalibrationPreview(captured);
-        setCalibrationPhase('captured');
         setCalibStep('done');
+        setStage('game');
+        prepareRound(0);
         return;
       }
 
@@ -600,36 +581,16 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
 
     loop();
     return () => window.clearTimeout(timer);
-  }, [stage, calibStep, calibrationPhase]);
+  }, [stage, calibStep]);
 
   const startGameFromSetup = async () => {
     if (!micReady) {
       await connectMic();
     }
     if (!hasCalibration || !isRangeValid(rangeRef.current.low, rangeRef.current.high)) {
-      setStage('difficulty');
+      await beginCalibration();
       return;
     }
-    setStage('game');
-    prepareRound(0);
-  };
-
-  const confirmDifficulty = async () => {
-    if (!micReady) await connectMic();
-    await beginCalibration();
-  };
-
-  const handleCalibrationContinue = () => {
-    setCalibrationError('');
-    if (calibStep === 'low') {
-      setCalibStep('high');
-      setCalibrationPhase('intro');
-      setCalibrationPreview(null);
-      setCalibLeftMs(CALIBRATION_MS);
-      calibCollectedRef.current = [];
-      return;
-    }
-
     setStage('game');
     prepareRound(0);
   };
@@ -744,14 +705,25 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
     localStorage.setItem(STREAK_KEY, JSON.stringify({ count, date: now }));
     setStreak(count);
 
-    const weekTag = `${new Date().getFullYear()}-W${Math.ceil(new Date().getDate() / 7)}`;
+    const weekTag = currentWeekTag();
     const boardRaw = safeJsonParse<Array<LeaderRecord & { week: string }>>(localStorage.getItem(BOARD_KEY), []);
-    const board = [...boardRaw, { id: user?.id || `anon-${Math.random().toString(36).slice(2, 7)}`, score: Math.round(finalScore), week: weekTag }]
-      .filter((x) => x.week === weekTag)
-      .sort((a: LeaderRecord & { week: string }, b: LeaderRecord & { week: string }) => b.score - a.score)
+    const nextEntry = {
+      id: user?.id || `anon-${Math.random().toString(36).slice(2, 7)}`,
+      name: getUserDisplayName(user),
+      score: Math.round(finalScore),
+      week: weekTag,
+    };
+    const weekly = [...boardRaw.filter((x) => x.week === weekTag), nextEntry];
+    const bestById = new Map<string, LeaderRecord & { week: string }>();
+    for (const row of weekly) {
+      const prev = bestById.get(row.id);
+      if (!prev || row.score > prev.score) bestById.set(row.id, row);
+    }
+    const board = [...bestById.values()]
+      .sort((a, b) => b.score - a.score)
       .slice(0, 5);
     localStorage.setItem(BOARD_KEY, JSON.stringify(board));
-    setLeaderboard(board.map(({ id, score }) => ({ id, score })));
+    setLeaderboard(board.map(({ id, name, score }) => ({ id, name, score })));
 
     setStage('results');
   };
@@ -783,10 +755,10 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
       utm_source: 'instagram',
       utm_medium: 'stories',
       utm_campaign: 'vocal_challenge',
-      utm_content: template,
+      utm_content: 'default_story',
     });
     return `https://www.instagram.com/vocal.jivoizvuk.ekb/?${params.toString()}`;
-  }, [template]);
+  }, []);
 
   const dmText = encodeURIComponent(`Привет! Я прошёл Mini Vocal Challenge, получил ${finalScore} (${level}). Хочу разбор и план роста 🎤`);
   const offer =
@@ -803,6 +775,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Canvas not supported');
 
+    const cardStyle = 'minimal';
     if (cardStyle === 'minimal') {
       ctx.fillStyle = '#111';
       ctx.fillRect(0, 0, 1080, 1920);
@@ -882,8 +855,6 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
     stopReferenceTone();
     setStage('setup');
     setCalibStep('low');
-    setCalibrationPhase('intro');
-    setCalibrationPreview(null);
     setCalibLeftMs(CALIBRATION_MS);
     setRange({ low: null, high: null });
     setHasCalibration(false);
@@ -947,12 +918,12 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
             {calibrationError ? <div className="warning calibrationWarning">{calibrationError}</div> : null}
 
             <div className="homeGamePrimary">
-              <button className="homeGameMicBtn" type="button" onClick={() => moveToDifficulty()}>
+              <button className="homeGameMicBtn" type="button" onClick={() => startGameFromSetup()}>
                 <span className="homeGameMicIcon">🎙️</span>
-                <span className="homeGameMicText">{micReady ? 'Дальше' : 'Включить микрофон'}</span>
+                <span className="homeGameMicText">{micReady ? 'Начать игру' : 'Включить микрофон'}</span>
               </button>
               <div className="homeGameHint">
-                {micReady ? 'Микрофон готов. Дальше будет выбор сложности и калибровка.' : 'При первом запуске нужно разрешить доступ к микрофону.'}
+                {micReady ? 'Готово! Нажмите, чтобы начать.' : 'При первом запуске нужно разрешить доступ к микрофону.'}
               </div>
             </div>
 
@@ -962,6 +933,13 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
 
             {showAdvancedSetup ? (
               <div className="homeGameAdvanced">
+                <label className="homeGameRow">
+                  <span>Сложность</span>
+                  <select value={difficulty} onChange={(e) => setDifficulty(e.target.value as Difficulty)}>
+                    <option value="newbie">Новичок</option>
+                    <option value="pro">Профи</option>
+                  </select>
+                </label>
 
                 <div className="homeGameRowBtns">
                   <button onClick={connectMic} disabled={micReady} type="button">
@@ -978,75 +956,13 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
           </section>
         )}
 
-        {stage === 'difficulty' && (
-          <section className="v6Section v6Section--centered">
-            <h2>Выберите сложность</h2>
-            <p className="centerText">Сложность вынесена на отдельный экран, чтобы старт игры был понятнее и спокойнее.</p>
-            <div className="difficultyGrid">
-              <button type="button" className={`difficultyCard ${difficulty === 'newbie' ? 'difficultyCard--active' : ''}`} onClick={() => setDifficulty('newbie')}>
-                <strong>Новичок</strong>
-                <span>Комфортные цели из середины диапазона.</span>
-              </button>
-              <button type="button" className={`difficultyCard ${difficulty === 'pro' ? 'difficultyCard--active' : ''}`} onClick={() => setDifficulty('pro')}>
-                <strong>Профи</strong>
-                <span>Шире диапазон целей и строже оценка.</span>
-              </button>
-            </div>
-            <div className="calibrationActions">
-              <button type="button" onClick={() => setStage('setup')}>Назад</button>
-              <button type="button" className="primary" onClick={confirmDifficulty}>Продолжить к калибровке</button>
-            </div>
-          </section>
-        )}
-
         {stage === 'calibration' && (
-          <section className="v6Section v6Section--centered">
+          <section className="v6Section">
             <h2>Калибровка диапазона</h2>
-            <div className="calibrationStepBadge">Шаг {calibStep === 'low' ? '1 / 2' : calibStep === 'high' ? '2 / 2' : 'готово'}</div>
-            <h3 className="calibrationHeadline">{calibStep === 'low' ? 'Спойте самую низкую комфортную ноту' : calibStep === 'high' ? 'Спойте самую высокую комфортную ноту' : 'Калибровка завершена'}</h3>
-            <p className="centerText">{calibStep === 'low' ? 'Не напрягайтесь. Нужна устойчивая комфортная нота.' : 'Спойте высокий, но удобный для вас звук. Держите его ровно.'}</p>
-            {calibrationError ? <div className="warning calibrationWarning">{calibrationError}</div> : null}
-
-            {calibrationPhase === 'intro' && calibStep !== 'done' ? (
-              <>
-                <div className="calibrationInfo">
-                  <div><strong>Что делать:</strong> пойте 4–5 секунд после нажатия кнопки.</div>
-                  <div><strong>Подсказка:</strong> {volumeHint}</div>
-                  <div><strong>Сейчас слышим:</strong> {freqToNote(pitch)} ({Math.round(pitch) || 0} Hz)</div>
-                </div>
-                <div className="calibrationActions">
-                  <button type="button" onClick={() => setStage('difficulty')}>Назад</button>
-                  <button type="button" className="primary" onClick={startCalibrationStep}>Начать шаг</button>
-                </div>
-              </>
-            ) : null}
-
-            {calibrationPhase === 'recording' ? (
-              <>
-                <div className="calibrationTimer">Осталось: {(calibLeftMs / 1000).toFixed(1)} c</div>
-                <div className="calibrationInfo">
-                  <div><strong>Текущая нота:</strong> {freqToNote(pitch)}</div>
-                  <div><strong>Частота:</strong> {Math.round(pitch) || 0} Hz</div>
-                  <div><strong>Громкость:</strong> {volumeHint}</div>
-                </div>
-              </>
-            ) : null}
-
-            {calibrationPhase === 'captured' ? (
-              <>
-                <div className="calibrationSuccess">✓ Нота записана: <strong>{freqToNote(calibrationPreview || 0)}</strong> ({Math.round(calibrationPreview || 0)} Hz)</div>
-                <div className="calibrationActions">
-                  {calibStep === 'done' ? (
-                    <button type="button" className="primary" onClick={handleCalibrationContinue}>Начать игру</button>
-                  ) : (
-                    <>
-                      <button type="button" onClick={() => setCalibrationPhase('intro')}>Повторить шаг</button>
-                      <button type="button" className="primary" onClick={handleCalibrationContinue}>Дальше</button>
-                    </>
-                  )}
-                </div>
-              </>
-            ) : null}
+            <p>{calibStep === 'low' ? 'Спойте низкую комфортную ноту (6 сек)' : 'Спойте высокую комфортную ноту (6 сек)'}</p>
+            <p>Осталось: {(calibLeftMs / 1000).toFixed(1)} c</p>
+            <p>Текущая нота: {freqToNote(pitch)} ({Math.round(pitch)} Hz)</p>
+            <p>{volumeHint}</p>
           </section>
         )}
 
@@ -1060,8 +976,8 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
 
               <div className="v7Hud">
                 <div className="hudRow hudRowMain">
-                  <div className="badge metricCell metricCell--live"><span className="metricLabel">{t('hud.live')}</span><strong className="metricValue">{Math.round(pitch) || 0} Hz</strong></div>
-                  <div className="badge metricCell metricCell--target"><span className="metricLabel">{t('hud.target')}</span><strong className="metricValue">{freqToNote(targetFreq)}</strong></div>
+                  <div className="badge metricCell metricCell--live">{t('hud.live')}: <strong>{Math.round(pitch) || 0} Hz</strong></div>
+                  <div className="badge metricCell metricCell--target">{t('hud.target')}: <strong>{freqToNote(targetFreq)}</strong></div>
                   <button
                     className="badge btn metricCell metricCell--tone"
                     title={t('hud.playTone')}
@@ -1084,7 +1000,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
                       }
                     }}
                   >🔊 {t('hud.playTone')}</button>
-                  <div className="badge metricCell metricCell--stars"><div className="starsRow">{Array.from({ length: 5 }, (_, i) => <span key={i} className={i < liveStars ? 'star star--on' : 'star'}>{i < liveStars ? '★' : '☆'}</span>)}</div></div>
+                  <div className="badge metricCell metricCell--stars"><strong>{'⭐'.repeat(liveStars)}{'☆'.repeat(Math.max(0, 5 - liveStars))}</strong></div>
                 </div>
 
                 {holding ? (
@@ -1105,8 +1021,8 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
                 )}
 
                 <div className="hudRow hudRowStats">
-                  <div className="badge subtle metricCell metricCell--streak"><span className="metricLabel">{t('hud.streak')}</span><strong className="metricValue">{streak}</strong></div>
-                  <div className="badge subtle metricCell metricCell--confidence"><span className="metricLabel">{t('hud.confidence')}</span><strong className="metricValue">{Math.round(confidence * 100)}%</strong></div>
+                  <div className="badge subtle metricCell metricCell--streak">{t('hud.streak')}: <strong>{streak}</strong></div>
+                  <div className="badge subtle metricCell metricCell--confidence">{t('hud.confidence')}: <strong>{Math.round(confidence * 100)}%</strong></div>
                 </div>
               </div>
             </div>
@@ -1136,49 +1052,29 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
         )}
 
         {stage === 'results' && (
-          <section className="v6Section v6Section--results">
+          <section className="v6Section">
             <h2>Результаты</h2>
-            <div className="resultGrid">
-              <div className="resultRow"><span>Итоговый счёт</span><strong>{finalScore}</strong></div>
-              <div className="resultRow"><span>Награда</span><strong>{'⭐'.repeat(starsFromScore(finalScore))}</strong></div>
-              <div className="resultRow"><span>Уровень</span><strong>{level}</strong></div>
-              <div className="resultRow resultRow--text"><span>Оффер</span><div>{offer}</div></div>
-              <div className="resultRow resultRow--text"><span>Приз</span><div>🎁 Напишите «ХОЧУ ПРИЗ» в DM и получите бонус-упражнение.</div></div>
-              <div className="resultRow resultRow--text"><span>Авто-DM</span><div>«Привет! Прошёл челлендж, хочу разбор голоса и план занятий».</div></div>
+            <div className="resultsGrid">
+              <div className="resultRow"><span className="resultLabel">Итоговый счёт</span><strong>{finalScore}</strong></div>
+              <div className="resultRow"><span className="resultLabel">Награда</span><strong>{'⭐'.repeat(starsFromScore(finalScore))}</strong></div>
+              <div className="resultRow"><span className="resultLabel">Уровень</span><strong>{level}</strong></div>
+              <div className="resultRow"><span className="resultLabel">Рекомендация</span><span>{offer}</span></div>
             </div>
 
-            <div className="resultControls">
-              <label>
-                <span>Стиль карточки</span>
-                <select value={cardStyle} onChange={(e) => setCardStyle(e.target.value as CardStyle)}>
-                  <option value="minimal">Минимал</option>
-                  <option value="neon">Неон</option>
-                  <option value="karaoke">Караоке</option>
-                </select>
-              </label>
-
-              <label>
-                <span>UTM шаблон</span>
-                <select value={template} onChange={(e) => setTemplate(e.target.value as 'template_a' | 'template_b')}>
-                  <option value="template_a">Шаблон A</option>
-                  <option value="template_b">Шаблон B</option>
-                </select>
-              </label>
-            </div>
-
-            <p className="linkWrap">Ссылка для стикера: <a href={utmUrl} target="_blank" rel="noreferrer">{utmUrl}</a></p>
+            <p className="shareHint">Поделитесь результатом или откройте DM с готовым текстом.</p>
             <div className="shareRow">
               <button onClick={shareToStories}>Поделиться в Stories</button>
               <button onClick={shareResultText}>Поделиться текстом</button>
-              <a className="dm" href={`https://ig.me/m/vocal.jivoizvuk.ekb?text=${dmText}`} target="_blank" rel="noreferrer">Открыть DM с текстом</a>
             </div>
+            <a className="dm" href={`https://ig.me/m/vocal.jivoizvuk.ekb?text=${dmText}`} target="_blank" rel="noreferrer">Открыть DM с текстом</a>
 
             <h3>Последние игры</h3>
             <ul>{history.map((h: HistoryRecord) => <li key={h.date}>{new Date(h.date).toLocaleString()} — {h.score} ({h.level})</li>)}</ul>
             <p>Ежедневная серия: {streak} 🔥</p>
 
-            <h3>Недельный рейтинг (локальный топ‑5)</h3>
-            <ol>{leaderboard.map((x: LeaderRecord) => <li key={x.id}>{x.id}: {x.score}</li>)}</ol>
+            <h3>Недельный рейтинг</h3>
+            <p className="leaderboardNote">Показывает лучший локальный результат за текущую неделю на этом устройстве.</p>
+            <ol className="leaderboardList">{leaderboard.map((x: LeaderRecord) => <li key={x.id}><span>{x.name}</span><strong>{x.score}</strong></li>)}</ol>
 
             <button onClick={resetAll}>Полный перезапуск челленджа</button>
           </section>
