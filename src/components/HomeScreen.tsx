@@ -25,9 +25,9 @@ export default function HomeScreen({ onStart }: Props) {
         </div>
 
         <div className="homeSpotlight">
-          <div className="homeFeature"><span>🎯</span><b>{t("home.feature.rounds.title")}</b><small>{t("home.feature.rounds.sub")}</small></div>
-          <div className="homeFeature"><span>⭐</span><b>{t("home.feature.accuracy.title")}</b><small>{t("home.feature.accuracy.sub")}</small></div>
-          <div className="homeFeature"><span>🏆</span><b>{t("home.feature.leaderboard.title")}</b><small>{t("home.feature.leaderboard.sub")}</small></div>
+          <div className="homeFeature"><span>🎯</span><b>{t("home.feature.rounds")}</b><small>{t("home.feature.rounds.sub")}</small></div>
+          <div className="homeFeature"><span>⭐</span><b>{t("home.feature.accuracy")}</b><small>{t("home.feature.accuracy.sub")}</small></div>
+          <div className="homeFeature"><span>🏆</span><b>{t("home.feature.top")}</b><small>{t("home.feature.top.sub")}</small></div>
         </div>
 
         <div className="homeActions">

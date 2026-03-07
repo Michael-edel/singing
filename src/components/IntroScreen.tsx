@@ -7,8 +7,8 @@ type Props = { onDone: () => void };
 export default function IntroScreen({ onDone }: Props) {
   const { t } = useI18n();
   useEffect(() => {
-    const t = window.setTimeout(onDone, 1800);
-    return () => window.clearTimeout(t);
+    const timer = window.setTimeout(onDone, 1800);
+    return () => window.clearTimeout(timer);
   }, [onDone]);
 
   return (
@@ -16,7 +16,7 @@ export default function IntroScreen({ onDone }: Props) {
       type="button"
       className="introOverlay"
       onClick={onDone}
-      aria-label={t("intro.skip")}
+      aria-label="Skip intro"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -30,7 +30,7 @@ export default function IntroScreen({ onDone }: Props) {
       >
         <div className="introKicker">{t("intro.kicker")}</div>
         <div className="introTitle">MiniVocalGame</div>
-        <div className="introSub">{t("intro.subtitle")}</div>
+        <div className="introSub">{t("intro.sub")}</div>
       </motion.div>
     </motion.button>
   );

@@ -131,10 +131,10 @@ function hzToCentsDiff(freq: number, target: number): number {
   return 1200 * Math.log2(freq / target);
 }
 
-function levelFromScore(score: number): string {
-  if (score >= 85) return 'Профи';
-  if (score >= 60) return 'Средний';
-  return 'Новичок';
+function levelKeyFromScore(score: number): string {
+  if (score >= 85) return 'level.pro';
+  if (score >= 60) return 'level.medium';
+  return 'level.newbie';
 }
 
 function isRangeValid(low: number | null, high: number | null): boolean {
@@ -567,7 +567,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
         if (!captured) {
           setCalibrationPreview(null);
           setCalibrationPhase('intro');
-          setCalibrationError(t('game.calibration.failed'));
+          setCalibrationError(t('game.cal.fail'));
           return;
         }
 
@@ -586,7 +586,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
           setCalibrationPreview(null);
           setCalibrationPhase('intro');
           setCalibStep('low');
-          setCalibrationError(t('game.calibration.invalid'));
+          setCalibrationError(t('game.cal.invalid'));
           return;
         }
 
@@ -779,8 +779,8 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
     onSubmitScore({ score: Math.round(finalScore), accuracy: finalAccuracy });
   }, [stage, onSubmitScore, finalScore, finalAccuracy]);
 
-  const levelKey = finalScore >= 85 ? 'pro' : finalScore >= 60 ? 'mid' : 'newbie';
-  const level = t(`game.level.${levelKey}`);
+  const levelKey = levelKeyFromScore(finalScore);
+  const level = t(levelKey);
   const volumeHint = volume < 0.012 ? t('game.volume.low') : volume > 0.11 ? t('game.volume.high') : t('game.volume.ok');
 
   const utmUrl = useMemo(() => {
@@ -793,8 +793,13 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
     return `https://www.instagram.com/vocal.jivoizvuk.ekb/?${params.toString()}`;
   }, [template]);
 
-  const dmText = encodeURIComponent(`${t('game.results.dmText')} 🎤`);
-  const offer = levelKey === 'newbie' ? t('game.offer.newbie') : levelKey === 'mid' ? t('game.offer.mid') : t('game.offer.pro');
+  const dmText = encodeURIComponent(t('share.dm', { score: finalScore, level }));
+  const offer =
+    levelKey === 'level.newbie'
+      ? t('offer.newbie')
+      : levelKey === 'level.medium'
+      ? t('offer.medium')
+      : t('offer.pro');
 
   const generateCardBlob = async (): Promise<Blob> => {
     const canvas = document.createElement('canvas');
@@ -821,15 +826,15 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
     }
 
     ctx.font = 'bold 72px sans-serif';
-    ctx.fillText('Mini Vocal Challenge', 90, 220);
+    ctx.fillText('MiniVocalGame', 90, 220);
     ctx.font = 'bold 180px sans-serif';
     ctx.fillText(String(finalScore), 90, 500);
     ctx.font = 'bold 80px sans-serif';
     ctx.fillText(level, 90, 640);
     ctx.font = '42px sans-serif';
-    ctx.fillText(t('game.share.addyours'), 90, 760);
+    ctx.fillText(t('share.addYours'), 90, 760);
     ctx.fillText('@vocal.jivoizvuk.ekb', 90, 840);
-    ctx.fillText(t('game.share.linksticker'), 90, 920);
+    ctx.fillText(t('share.linkSticker'), 90, 920);
     ctx.fillText(utmUrl, 90, 980);
 
     return await new Promise((resolve, reject) => {
@@ -838,7 +843,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
   };
 
   const shareResultText = async () => {
-    const text = `🎤 MiniVocalGame: ${finalScore} (${level}).`;
+    const text = t('share.result', { score: finalScore, level });
     if (navigator.share) {
       try {
         await navigator.share({ title: 'MiniVocalGame', text, url: window.location.href });
@@ -847,7 +852,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
     }
     try {
       await navigator.clipboard.writeText(`${text} ${utmUrl}`);
-      alert(t('game.share.copied'));
+      alert(t('share.copied'));
     } catch {
       alert(text);
     }
@@ -856,7 +861,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
   const shareToStories = async () => {
     const blob = await generateCardBlob();
     const file = new File([blob], 'mini-vocal-result.png', { type: 'image/png' });
-    const shareData: ShareData = { files: [file], text: `MiniVocalGame: ${finalScore} (${level})` };
+    const shareData: ShareData = { files: [file], text: t('share.story', { score: finalScore, level }) };
 
     if (navigator.canShare && navigator.canShare(shareData) && navigator.share) {
       await navigator.share(shareData);
@@ -871,10 +876,10 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
     URL.revokeObjectURL(url);
 
     try {
-      await navigator.clipboard.writeText(`MiniVocalGame: ${finalScore} (${level}). Link: ${utmUrl}`);
-      alert(t('game.share.pngCopied'));
+      await navigator.clipboard.writeText(`${t('share.story', { score: finalScore, level })}. Link: ${utmUrl}`);
+      alert(t('share.storyCopied'));
     } catch {
-      alert(t('game.share.pngSaved'));
+      alert(t('share.storyDownloaded'));
     }
   };
 
@@ -918,11 +923,11 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
         {showOnboarding && stage === 'game' && roundIndex === 0 ? (
           <div className="onboardOverlay" role="dialog" aria-modal="true">
             <div className="onboardCard">
-              <div className="onboardTitle">{t('game.onboarding.title')}</div>
+              <div className="onboardTitle">{t('game.howto')}</div>
               <ol className="onboardSteps">
-                <li>{t('game.setup.micOn')}.</li>
-                <li>{t('game.hold')}.</li>
-                <li>{t('game.onboarding.step3a')} <b>{freqToNote(targetFreq)}</b> {t('game.onboarding.step3b')} <b>{Math.round(ROUND_MS / 1000)}</b> {t('game.onboarding.step3c')}</li>
+                <li>{t('game.onboard.1')}</li>
+                <li>{t('game.onboard.2')}</li>
+                <li>{t('game.onboard.3', { seconds: Math.round(ROUND_MS / 1000) })}</li>
               </ol>
               <div className="onboardActions">
                 <button
@@ -932,7 +937,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
                     setShowOnboarding(false);
                   }}
                 >
-                  {t('game.onboarding.ok')}
+                  {t('game.ok')}
                 </button>
               </div>
             </div>
@@ -943,16 +948,16 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
           <section className="homeGameSetup">
             <div className="homeGameTitle">🎤 MiniVocalGame</div>
             <div className="homeGameSubtitle">{t('game.setup.subtitle')}</div>
-            <div className="homeGameHint">{t('game.setup.firstHint')}</div>
+            <div className="homeGameHint">{t('game.setup.hint')}</div>
             {calibrationError ? <div className="warning calibrationWarning">{calibrationError}</div> : null}
 
             <div className="homeGamePrimary">
               <button className="homeGameMicBtn" type="button" onClick={() => moveToDifficulty()}>
                 <span className="homeGameMicIcon">🎙️</span>
-                <span className="homeGameMicText">{micReady ? t('game.setup.next') : t('game.setup.micOn')}</span>
+                <span className="homeGameMicText">{micReady ? t('game.setup.next') : t('game.setup.enableMic')}</span>
               </button>
               <div className="homeGameHint">
-                {micReady ? t('game.setup.micReadyHint') : t('game.setup.micNeedHint')}
+                {micReady ? t('game.setup.ready') : t('game.setup.allowMic')}
               </div>
             </div>
 
@@ -968,11 +973,11 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
                     {micReady ? t('game.setup.micConnected') : t('game.setup.connectMic')}
                   </button>
                   <button onClick={beginCalibration} disabled={!micReady} type="button">
-                    {t('game.calib.title')}
+                    {t('game.setup.calibration')}
                   </button>
                 </div>
 
-                <div className="homeGameFinePrint">{t('game.calib.title')}.</div>
+                <div className="homeGameFinePrint">{t('game.setup.fineprint')}</div>
               </div>
             ) : null}
           </section>
@@ -985,63 +990,63 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
             <div className="difficultyGrid">
               <button type="button" className={`difficultyCard ${difficulty === 'newbie' ? 'difficultyCard--active' : ''}`} onClick={() => setDifficulty('newbie')}>
                 <strong>{t('game.difficulty.newbie')}</strong>
-                <span>{t('game.difficulty.newbieDesc')}</span>
+                <span>{t('game.difficulty.newbie.sub')}</span>
               </button>
               <button type="button" className={`difficultyCard ${difficulty === 'pro' ? 'difficultyCard--active' : ''}`} onClick={() => setDifficulty('pro')}>
                 <strong>{t('game.difficulty.pro')}</strong>
-                <span>{t('game.difficulty.proDesc')}</span>
+                <span>{t('game.difficulty.pro.sub')}</span>
               </button>
             </div>
             <div className="calibrationActions">
-              <button type="button" onClick={() => setStage('setup')}>{t('game.setup.back')}</button>
-              <button type="button" className="primary" onClick={confirmDifficulty}>{t('game.setup.continueCalibration')}</button>
+              <button type="button" onClick={() => setStage('setup')}>{t('game.back')}</button>
+              <button type="button" className="primary" onClick={confirmDifficulty}>{t('game.continueCalibration')}</button>
             </div>
           </section>
         )}
 
         {stage === 'calibration' && (
           <section className="v6Section v6Section--centered">
-            <h2>{t('game.calib.title')}</h2>
-            <div className="calibrationStepBadge">{t('game.calib.step')} {calibStep === 'low' ? '1 / 2' : calibStep === 'high' ? '2 / 2' : t('game.calib.done')}</div>
-            <h3 className="calibrationHeadline">{calibStep === 'low' ? t('game.calib.lowTitle') : calibStep === 'high' ? t('game.calib.highTitle') : t('game.calib.finished')}</h3>
-            <p className="centerText">{calibStep === 'low' ? t('game.calib.lowDesc') : t('game.calib.highDesc')}</p>
+            <h2>{t('game.setup.calibration')}</h2>
+            <div className="calibrationStepBadge">{t('game.cal.step', { step: calibStep === 'low' ? '1 / 2' : calibStep === 'high' ? '2 / 2' : t('game.cal.done') })}</div>
+            <h3 className="calibrationHeadline">{calibStep === 'low' ? t('game.cal.low') : calibStep === 'high' ? t('game.cal.high') : t('game.cal.completed')}</h3>
+            <p className="centerText">{calibStep === 'low' ? t('game.cal.lowHelp') : t('game.cal.highHelp')}</p>
             {calibrationError ? <div className="warning calibrationWarning">{calibrationError}</div> : null}
 
             {calibrationPhase === 'intro' && calibStep !== 'done' ? (
               <>
                 <div className="calibrationInfo">
-                  <div><strong>{t('game.calib.what')}</strong> {t('game.calib.whatDesc')}</div>
-                  <div><strong>{t('game.calib.tip')}</strong> {volumeHint}</div>
-                  <div><strong>{t('game.calib.heard')}</strong> {freqToNote(pitch)} ({Math.round(pitch) || 0} Hz)</div>
+                  <div><strong>{t('game.cal.do')}</strong> {t('game.cal.doText')}</div>
+                  <div><strong>{t('game.cal.tip')}</strong> {volumeHint}</div>
+                  <div><strong>{t('game.cal.heard')}</strong> {freqToNote(pitch)} ({Math.round(pitch) || 0} Hz)</div>
                 </div>
                 <div className="calibrationActions">
-                  <button type="button" onClick={() => setStage('difficulty')}>{t('game.setup.back')}</button>
-                  <button type="button" className="primary" onClick={startCalibrationStep}>{t('game.calib.startStep')}</button>
+                  <button type="button" onClick={() => setStage('difficulty')}>{t('game.back')}</button>
+                  <button type="button" className="primary" onClick={startCalibrationStep}>{t('game.cal.startStep')}</button>
                 </div>
               </>
             ) : null}
 
             {calibrationPhase === 'recording' ? (
               <>
-                <div className="calibrationTimer">{t('game.calib.left')} {(calibLeftMs / 1000).toFixed(1)} c</div>
+                <div className="calibrationTimer">{t('game.cal.left')} {(calibLeftMs / 1000).toFixed(1)} c</div>
                 <div className="calibrationInfo">
-                  <div><strong>{t('game.calib.currentNote')}</strong> {freqToNote(pitch)}</div>
-                  <div><strong>{t('game.calib.freq')}</strong> {Math.round(pitch) || 0} Hz</div>
-                  <div><strong>{t('game.calib.volume')}</strong> {volumeHint}</div>
+                  <div><strong>{t('game.cal.currentNote')}</strong> {freqToNote(pitch)}</div>
+                  <div><strong>{t('game.cal.frequency')}</strong> {Math.round(pitch) || 0} Hz</div>
+                  <div><strong>{t('game.cal.volume')}</strong> {volumeHint}</div>
                 </div>
               </>
             ) : null}
 
             {calibrationPhase === 'captured' ? (
               <>
-                <div className="calibrationSuccess">{t('game.calib.saved')} <strong>{freqToNote(calibrationPreview || 0)}</strong> ({Math.round(calibrationPreview || 0)} Hz)</div>
+                <div className="calibrationSuccess">✓ {t('game.cal.saved')} <strong>{freqToNote(calibrationPreview || 0)}</strong> ({Math.round(calibrationPreview || 0)} Hz)</div>
                 <div className="calibrationActions">
                   {calibStep === 'done' ? (
-                    <button type="button" className="primary" onClick={handleCalibrationContinue}>{t('game.calib.startGame')}</button>
+                    <button type="button" className="primary" onClick={handleCalibrationContinue}>{t('game.cal.startGame')}</button>
                   ) : (
                     <>
-                      <button type="button" onClick={() => setCalibrationPhase('intro')}>{t('game.calib.repeat')}</button>
-                      <button type="button" className="primary" onClick={handleCalibrationContinue}>{t('game.calib.next')}</button>
+                      <button type="button" onClick={() => setCalibrationPhase('intro')}>{t('game.cal.retry')}</button>
+                      <button type="button" className="primary" onClick={handleCalibrationContinue}>{t('game.cal.next')}</button>
                     </>
                   )}
                 </div>
@@ -1117,7 +1122,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
             {autoPaused ? (
               <>
                 <p className="warning">{pauseMsg}</p>
-                <button onClick={resumeAfterPause}>{t('game.resume')}</button>
+                <button onClick={resumeAfterPause}>{t('hud.resume')}</button>
               </>
             ) : (
               <button
@@ -1129,7 +1134,7 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
                 onTouchEnd={stopHold}
                 onTouchCancel={stopHold}
               >
-                {holding ? t('game.holding') : t('game.hold')}
+                {holding ? t('hud.holding') : t('hud.holdAction')}
               </button>
             )}
           </section>
@@ -1137,31 +1142,31 @@ export default function MiniVocalGame({ user, onSubmitScore }: { user?: any; onS
 
         {stage === 'results' && (
           <section className="v6Section v6Section--results">
-            <h2>{t('game.results')}</h2>
+            <h2>{t('results.title')}</h2>
             <div className="resultGrid">
-              <div className="resultRow"><span>{t('game.results.total')}</span><strong>{finalScore}</strong></div>
-              <div className="resultRow"><span>{t('game.results.reward')}</span><strong>{'⭐'.repeat(starsFromScore(finalScore))}</strong></div>
-              <div className="resultRow"><span>{t('game.results.level')}</span><strong>{level}</strong></div>
-              <div className="resultRow resultRow--text"><span>{t('game.results.offer')}</span><div>{offer}</div></div>
-              <div className="resultRow resultRow--text"><span>{t('game.results.prize')}</span><div>{t('game.results.prizeText')}</div></div>
-              <div className="resultRow resultRow--text"><span>{t('game.results.dm')}</span><div>{t('game.results.dmText')}</div></div>
+              <div className="resultRow"><span>{t('results.total')}</span><strong>{finalScore}</strong></div>
+              <div className="resultRow"><span>{t('results.reward')}</span><strong>{'⭐'.repeat(starsFromScore(finalScore))}</strong></div>
+              <div className="resultRow"><span>{t('results.level')}</span><strong>{level}</strong></div>
+              <div className="resultRow resultRow--text"><span>{t('results.offer')}</span><div>{offer}</div></div>
+              <div className="resultRow resultRow--text"><span>{t('results.prize')}</span><div>{t('results.prizeText')}</div></div>
+              <div className="resultRow resultRow--text"><span>{t('results.autoDm')}</span><div>{t('results.autoDmText')}</div></div>
             </div>
 
-            <p className="linkWrap">{t('game.results.link')} <a href={utmUrl} target="_blank" rel="noreferrer">{utmUrl}</a></p>
+            <p className="linkWrap">{t('results.stickerLink')}: <a href={utmUrl} target="_blank" rel="noreferrer">{utmUrl}</a></p>
             <div className="shareRow">
-              <button onClick={shareToStories}>{t('game.results.shareStories')}</button>
-              <button onClick={shareResultText}>{t('game.results.shareText')}</button>
-              <a className="dm" href={`https://ig.me/m/vocal.jivoizvuk.ekb?text=${dmText}`} target="_blank" rel="noreferrer">{t('game.results.openDm')}</a>
+              <button onClick={shareToStories}>{t('results.shareStories')}</button>
+              <button onClick={shareResultText}>{t('results.shareText')}</button>
+              <a className="dm" href={`https://ig.me/m/vocal.jivoizvuk.ekb?text=${dmText}`} target="_blank" rel="noreferrer">{t('results.openDm')}</a>
             </div>
 
-            <h3>{t('game.results.history')}</h3>
+            <h3>{t('results.lastGames')}</h3>
             <ul>{history.map((h: HistoryRecord) => <li key={h.date}>{new Date(h.date).toLocaleString()} — {h.score} ({h.level})</li>)}</ul>
-            <p>{t('game.results.daily')} {streak} 🔥</p>
+            <p>{t('results.dailyStreak')}: {streak} 🔥</p>
 
-            <h3>{t('game.results.weekly')}</h3>
+            <h3>{t('results.weekly')}</h3>
             <ol>{leaderboard.map((x: LeaderRecord) => <li key={x.id}>{x.id}: {x.score}</li>)}</ol>
 
-            <button onClick={resetAll}>{t('game.results.reset')}</button>
+            <button onClick={resetAll}>{t('results.reset')}</button>
           </section>
         )}
       </div>

@@ -88,7 +88,7 @@ export default function PitchRoad({ points, windowMs = 4500 }: Props) {
       ctx.fillStyle = "rgba(255,255,255,0.62)";
       ctx.font = "600 14px system-ui, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(t("pitch.empty"), w / 2, mid + 5);
+      ctx.fillText(t("pitch.road.empty"), w / 2, mid + 5);
       return;
     }
 
