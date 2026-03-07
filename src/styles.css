@@ -2158,69 +2158,165 @@ a{overflow-wrap:anywhere; word-break:break-word;}
   .metricCell{min-height:58px;}
 }
 
-/* V8 splash + note-grid + persistent calibration */
-.introOverlay--video {
-  position: relative;
-  overflow: hidden;
-  background: radial-gradient(circle at center, rgba(25,34,84,0.85), rgba(3,5,17,0.96));
+
+/* --- V9 mobile fit + no intro video --- */
+
+.introStage,
+.introOverlay,
+.introVideo,
+.introCard {
+  display: none !important;
 }
-.introVideo {
-  position: absolute;
-  inset: 0;
+
+button,
+.hold,
+.badge.btn.metricCell--tone {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.v5Shell {
+  min-height: 100dvh !important;
+  padding-top: max(12px, env(safe-area-inset-top)) !important;
+  padding-bottom: max(12px, env(safe-area-inset-bottom)) !important;
+  justify-content: flex-start !important;
+}
+
+.gameStage {
+  min-height: 100dvh;
+  align-items: flex-start;
+}
+
+.v6GameCard--play {
+  padding-bottom: calc(96px + env(safe-area-inset-bottom)) !important;
+}
+
+.holdButtonContainer {
+  position: sticky;
+  bottom: 0;
+  z-index: 8;
+  margin-top: 8px;
+  padding-top: 6px;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  background: linear-gradient(to bottom, rgba(16,18,34,0), rgba(16,18,34,0.72) 22%, rgba(16,18,34,0.94) 56%);
+  backdrop-filter: blur(8px);
+}
+
+.volumeHint {
+  margin: 0 0 8px;
+}
+
+.hold {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
-  opacity: 0.38;
-}
-.introCard--video {
-  position: relative;
-  z-index: 2;
-  background: rgba(8, 12, 28, 0.42);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255,255,255,0.12);
-  box-shadow: 0 20px 60px rgba(0,0,0,0.35);
-}
-.savedCalibrationBanner {
-  width: min(560px, 100%);
-  margin: 10px 0 2px;
-  padding: 14px 16px;
+  min-height: 56px;
   border-radius: 18px;
-  background: rgba(116, 130, 255, 0.12);
-  border: 1px solid rgba(144, 158, 255, 0.24);
-  color: rgba(255,255,255,0.88);
-  text-align: left;
 }
-.savedCalibrationActions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 10px;
+
+.pitchRoadWrap {
+  margin-bottom: 4px;
 }
-.savedCalibrationActions button,
-.ghostBtn {
-  min-height: 42px;
-  padding: 0 14px;
-  border-radius: 999px;
-}
-.ghostBtn {
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.14);
-}
-.pitchRoad {
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02)),
-    rgba(255,255,255,0.02);
-}
-@media (max-width: 640px) {
-  .savedCalibrationBanner {
-    padding: 12px 14px;
-    border-radius: 16px;
+
+@media (max-width: 768px) {
+  .homeStageStack {
+    gap: 12px;
   }
-  .savedCalibrationActions {
-    flex-direction: column;
+
+  .v5Shell {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
   }
-  .savedCalibrationActions button,
-  .ghostBtn {
+
+  .v6GameCard,
+  .v6GameCard--play {
     width: 100%;
+    max-width: 100%;
+  }
+
+  .v6GameCard--play .v6Section {
+    padding: 14px 14px 10px;
+  }
+
+  .smuleRing {
+    width: 180px !important;
+    height: 180px !important;
+    margin: 0 auto;
+  }
+
+  .smuleNote {
+    font-size: 26px !important;
+  }
+
+  .smuleHz,
+  .smuleCents {
+    font-size: 12px !important;
+  }
+
+  .metricCell {
+    min-height: 54px !important;
+    padding: 8px 10px !important;
+  }
+
+  .metricLabel {
+    font-size: 12px !important;
+  }
+
+  .metricValue,
+  .metricCell strong {
+    font-size: 17px !important;
+  }
+
+  .v7GameGrid {
+    gap: 10px !important;
+  }
+
+  .pitchRoad {
+    height: 104px !important;
+  }
+
+  .pitchRoadLegend {
+    font-size: 10px !important;
+    gap: 8px !important;
+    margin-top: 6px !important;
+  }
+
+  .hold {
+    min-height: 54px !important;
+    font-size: 17px !important;
+  }
+}
+
+@media (max-width: 430px) {
+  .v5Card h1 {
+    font-size: 22px !important;
+  }
+
+  .v6Section {
+    margin-top: 10px;
+  }
+
+  .smuleRing {
+    width: 168px !important;
+    height: 168px !important;
+  }
+
+  .v7GameGrid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .hudRowMain,
+  .hudRowStats {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px !important;
+  }
+
+  .metricCell--stars {
+    min-width: 0 !important;
+  }
+
+  .pitchRoad {
+    height: 96px !important;
   }
 }

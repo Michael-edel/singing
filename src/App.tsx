@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import MiniVocalGame from "./MiniVocalGame";
-import IntroScreen from "./components/IntroScreen";
 import HomeScreen from "./components/HomeScreen";
 import { AuthPanel } from "./components/AuthPanel";
 import { LeaderboardTable } from "./components/LeaderboardTable";
@@ -9,8 +8,8 @@ import { LeaderboardTable } from "./components/LeaderboardTable";
 type User = { id: string; name?: string; email?: string; avatar?: string; provider?: string };
 
 export default function App() {
-  type Screen = "intro" | "home" | "game";
-  const [screen, setScreen] = useState<Screen>("intro");
+  type Screen = "home" | "game";
+  const [screen, setScreen] = useState<Screen>("home");
   const [user, setUser] = useState<User | null>(null);
 
   async function submitScore(payload: { score: number; accuracy: number }) {
@@ -38,18 +37,7 @@ export default function App() {
   return (
     <div className={`appShell appShell--${screen}`}>
       <AnimatePresence mode="wait">
-        {screen === "intro" ? (
-          <motion.div
-            key="intro"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="introStage"
-          >
-            <IntroScreen onDone={() => setScreen("home")} />
-          </motion.div>
-        ) : screen === "home" ? (
+        {screen === "home" ? (
           <motion.div
             key="home"
             initial={{ opacity: 0, y: 10 }}

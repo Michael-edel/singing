@@ -11,7 +11,6 @@ export type PitchPoint = {
 type Props = {
   points: PitchPoint[];
   windowMs?: number;
-  targetFreq?: number;
 };
 
 const colorFor = (g: PitchGrade) => {
@@ -27,20 +26,7 @@ const colorFor = (g: PitchGrade) => {
   }
 };
 
-const noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-
-function hzToMidi(freq: number) {
-  return 69 + 12 * Math.log2(freq / 440);
-}
-
-function noteNameForMidi(midi: number) {
-  const rounded = Math.round(midi);
-  const note = noteNames[((rounded % 12) + 12) % 12];
-  const octave = Math.floor(rounded / 12) - 1;
-  return `${note}${octave}`;
-}
-
-export default function PitchRoad({ points, windowMs = 4500, targetFreq = 220 }: Props) {
+export default function PitchRoad({ points, windowMs = 4500 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const normalized = useMemo(() => {
@@ -49,7 +35,7 @@ export default function PitchRoad({ points, windowMs = 4500, targetFreq = 220 }:
     const start = end - windowMs;
     return points
       .filter((p) => p.t >= start)
-      .map((p) => ({ ...p, cents: Math.max(-400, Math.min(400, p.cents)) }));
+      .map((p) => ({ ...p, cents: Math.max(-60, Math.min(60, p.cents)) }));
   }, [points, windowMs]);
 
   useEffect(() => {
@@ -59,7 +45,7 @@ export default function PitchRoad({ points, windowMs = 4500, targetFreq = 220 }:
     if (!ctx) return;
 
     const rect = canvas.getBoundingClientRect();
-    const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    const dpr = 1;
     const cssWidth = Math.max(280, Math.round(rect.width || 720));
     const cssHeight = Math.max(128, Math.round(rect.height || 168));
     if (canvas.width !== cssWidth * dpr || canvas.height !== cssHeight * dpr) {
@@ -72,42 +58,35 @@ export default function PitchRoad({ points, windowMs = 4500, targetFreq = 220 }:
     const h = cssHeight;
     ctx.clearRect(0, 0, w, h);
 
-    const targetMidi = Math.round(hzToMidi(targetFreq));
-    const gridMidis: number[] = [];
-    for (let i = -4; i <= 4; i += 1) gridMidis.push(targetMidi + i);
+    const mid = h / 2;
+    const centsToY = (c: number) => mid - c * (h / 140);
 
-    const midiToY = (midi: number) => {
-      const topMidi = targetMidi + 4;
-      const bottomMidi = targetMidi - 4;
-      const ratio = (topMidi - midi) / (topMidi - bottomMidi || 1);
-      return 12 + ratio * (h - 24);
-    };
-
-    const centsToY = (cents: number) => midiToY(targetMidi + cents / 100);
-
-    ctx.font = "500 11px system-ui, sans-serif";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "middle";
-
-    gridMidis.forEach((midi) => {
-      const y = midiToY(midi);
-      const isTarget = midi === targetMidi;
-      ctx.strokeStyle = isTarget ? "rgba(255,255,255,0.36)" : "rgba(255,255,255,0.12)";
-      ctx.lineWidth = isTarget ? 2 : 1;
+    const bands = [5, 15, 30, 50];
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(255,255,255,0.12)";
+    for (const b of bands) {
       ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(w, y);
+      ctx.moveTo(0, centsToY(b));
+      ctx.lineTo(w, centsToY(b));
       ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, centsToY(-b));
+      ctx.lineTo(w, centsToY(-b));
+      ctx.stroke();
+    }
 
-      ctx.fillStyle = isTarget ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.48)";
-      ctx.fillText(noteNameForMidi(midi), 8, y - 10);
-    });
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "rgba(255,255,255,0.26)";
+    ctx.beginPath();
+    ctx.moveTo(0, mid);
+    ctx.lineTo(w, mid);
+    ctx.stroke();
 
     if (!normalized.length) {
       ctx.fillStyle = "rgba(255,255,255,0.62)";
       ctx.font = "600 14px system-ui, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText("Спойте ноту, чтобы увидеть дорожку", w / 2, h / 2 + 5);
+      ctx.fillText("Спойте ноту, чтобы увидеть дорожку", w / 2, mid + 5);
       return;
     }
 
@@ -117,10 +96,9 @@ export default function PitchRoad({ points, windowMs = 4500, targetFreq = 220 }:
 
     if (normalized.length < 2) {
       const only = normalized[0];
-      const c = colorFor(only.grade);
-      ctx.fillStyle = c;
-      ctx.shadowColor = c;
-      ctx.shadowBlur = 10;
+      ctx.fillStyle = colorFor(only.grade);
+      ctx.shadowColor = colorFor(only.grade);
+      ctx.shadowBlur = 0;
       ctx.beginPath();
       ctx.arc(xForT(only.t), centsToY(only.cents), 5, 0, Math.PI * 2);
       ctx.fill();
@@ -135,10 +113,9 @@ export default function PitchRoad({ points, windowMs = 4500, targetFreq = 220 }:
       const a = normalized[i - 1];
       const b = normalized[i];
       if (b.t - a.t > 350) continue;
-      const c = colorFor(b.grade);
-      ctx.strokeStyle = c;
-      ctx.shadowColor = c;
-      ctx.shadowBlur = 8;
+      ctx.strokeStyle = colorFor(b.grade);
+      ctx.shadowColor = colorFor(b.grade);
+      ctx.shadowBlur = 0;
       ctx.beginPath();
       ctx.moveTo(xForT(a.t), centsToY(a.cents));
       ctx.lineTo(xForT(b.t), centsToY(b.cents));
@@ -147,15 +124,14 @@ export default function PitchRoad({ points, windowMs = 4500, targetFreq = 220 }:
     ctx.shadowBlur = 0;
 
     const last = normalized[normalized.length - 1];
-    const lastColor = colorFor(last.grade);
-    ctx.fillStyle = lastColor;
-    ctx.shadowColor = lastColor;
-    ctx.shadowBlur = 10;
+    ctx.fillStyle = colorFor(last.grade);
+    ctx.shadowColor = colorFor(last.grade);
+    ctx.shadowBlur = 0;
     ctx.beginPath();
     ctx.arc(xForT(last.t), centsToY(last.cents), 5, 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowBlur = 0;
-  }, [normalized, targetFreq, windowMs]);
+  }, [normalized, windowMs]);
 
   return (
     <div className="pitchRoadWrap">
