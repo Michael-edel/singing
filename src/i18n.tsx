@@ -54,6 +54,13 @@ const DICTS: Record<Lang, Dict> = {
     "hud.playTone": "Нота",
     "hud.streak": "Серия",
     "hud.confidence": "Уверенность",
+    "hud.stars": "Звёзды",
+
+    "pitch.roadHint": "Спойте ноту, чтобы увидеть дорожку",
+    "pitch.legendPerfect": "идеально",
+    "pitch.legendGreat": "отлично",
+    "pitch.legendGood": "нормально",
+    "pitch.legendMiss": "мимо",
 
     // Components
     "pitch.cents": "центов",
@@ -109,6 +116,13 @@ const DICTS: Record<Lang, Dict> = {
     "hud.playTone": "Tone",
     "hud.streak": "Streak",
     "hud.confidence": "Confidence",
+    "hud.stars": "Stars",
+
+    "pitch.roadHint": "Sing to see the pitch road",
+    "pitch.legendPerfect": "perfect",
+    "pitch.legendGreat": "great",
+    "pitch.legendGood": "good",
+    "pitch.legendMiss": "miss",
 
     "pitch.cents": "cents",
     "pitch.nice": "Nice!",

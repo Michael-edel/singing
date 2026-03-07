@@ -2158,202 +2158,73 @@ a{overflow-wrap:anywhere; word-break:break-word;}
   .metricCell{min-height:58px;}
 }
 
-
-/* ===== V4 mobile fit + touch fixes ===== */
-button, .hold, .badge.btn.metricCell--tone, .homeGameMicBtn, .primary, .dm {
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  user-select: none;
-  touch-action: manipulation;
+/* V5 studio funnel + HUD V2 */
+.hudPanelV2{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
 }
-
-.v5Shell.v6Shell {
-  min-height: 100dvh;
-  justify-content: center;
-  padding-top: max(20px, env(safe-area-inset-top));
-  padding-bottom: max(20px, env(safe-area-inset-bottom));
-  padding-left: max(16px, env(safe-area-inset-left));
-  padding-right: max(16px, env(safe-area-inset-right));
-  overflow-x: hidden;
+.statCardV2{
+  min-height:68px;
+  padding:12px 14px;
+  border-radius:18px;
+  background:rgba(255,255,255,0.05);
+  border:1px solid rgba(255,255,255,0.08);
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  text-align:center;
+  font-variant-numeric:tabular-nums;
 }
-
-.v5Card.v6GameCard {
-  width: min(920px, 100%);
+.statCardV2--accent{
+  border-color:rgba(34,197,94,0.55);
+  box-shadow:0 0 0 1px rgba(34,197,94,0.18) inset, 0 0 20px rgba(34,197,94,0.12);
 }
-
-.v6Section {
-  width: 100%;
+.statCardV2__label{
+  font-size:12px;
+  color:rgba(255,255,255,0.72);
+  margin-bottom:6px;
 }
-
-.linkWrap, .linkWrap a {
-  overflow-wrap: anywhere;
-  word-break: break-word;
+.statCardV2__value{
+  min-height:20px;
+  font-size:17px;
+  font-weight:700;
+  line-height:1;
 }
-
-.hudRowMain {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+.hudStarsFixed{
+  width:96px;
+  display:flex;
+  justify-content:center;
+  gap:4px;
 }
-
-.hudRowStats {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+.hudToneRow{display:flex;justify-content:center;}
+.pitchRoadWrapV2{margin-top:10px;}
+.pitchRoadV2{height:128px;border-radius:18px;background:linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));}
+.studioCta{
+  margin:18px 0;
+  padding:18px;
+  border-radius:20px;
+  background:linear-gradient(135deg, rgba(80,50,180,0.24), rgba(20,160,140,0.20));
+  border:1px solid rgba(255,255,255,0.12);
 }
-
-.metricCell, .badge.btn.metricCell--tone {
-  min-width: 0;
+.studioCta__title{font-size:20px;font-weight:800;margin-bottom:8px;}
+.studioCta__text{color:rgba(255,255,255,0.82);margin-bottom:12px;}
+.studioCta__button{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:48px;
+  padding:0 18px;
+  border-radius:999px;
+  text-decoration:none;
+  color:#07111a;
+  background:linear-gradient(135deg,#8ef9d0,#5eead4);
+  font-weight:800;
 }
-
-.metricLabel, .metricValue, .starsRow {
-  width: 100%;
-  text-align: center;
-}
-
-.starsRow {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-}
-
-.homeGameFinePrint--compact {
-  width: min(560px, 100%);
-  margin-top: 8px;
-}
-
-@media (max-width: 700px) {
-  .v5Shell.v6Shell {
-    justify-content: flex-start;
-    padding-top: max(12px, env(safe-area-inset-top));
-    padding-bottom: max(96px, env(safe-area-inset-bottom));
-  }
-
-  .v5Card.v6GameCard {
-    width: 100%;
-    padding: 14px;
-    border-radius: 22px;
-  }
-
-  .v6GameCard--play {
-    padding-top: 12px;
-  }
-
-  .v6Section {
-    gap: 10px;
-  }
-
-  .v7GameGrid {
-    grid-template-columns: 1fr;
-    gap: 10px;
-    align-items: stretch;
-  }
-
-  .v7Ring {
-    display: flex;
-    justify-content: center;
-  }
-
-  .pitchRing {
-    width: 170px;
-    height: 170px;
-  }
-
-  .hudRowMain {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-  }
-
-  .hudRowStats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-  }
-
-  .metricCell, .badge.btn.metricCell--tone {
-    min-height: 56px;
-    padding: 10px 8px;
-    border-radius: 14px;
-  }
-
-  .metricValue {
-    font-size: 15px;
-  }
-
-  .metricLabel {
-    font-size: 12px;
-  }
-
-  .starsRow {
-    min-height: 20px;
-  }
-
-  canvas.pitchRoadCanvas, .pitchRoad canvas {
-    height: 104px !important;
-  }
-
-  .hint, .subtle, .centerText, p {
-    font-size: 14px;
-    line-height: 1.4;
-  }
-
-  .hold {
-    width: 100%;
-    min-height: 54px;
-    position: sticky;
-    bottom: max(12px, env(safe-area-inset-bottom));
-    z-index: 5;
-  }
-
-  .homeGameSetup {
-    padding: 4px 0 0;
-    gap: 12px;
-  }
-
-  .homeGameTitle {
-    font-size: 21px;
-    line-height: 1.15;
-    margin: 0;
-  }
-
-  .homeGameSubtitle {
-    font-size: 14px;
-    line-height: 1.35;
-    margin: 0;
-  }
-
-  .homeGameHint, .homeGameFinePrint {
-    font-size: 12px;
-    line-height: 1.35;
-  }
-
-  .homeGameMicBtn {
-    min-height: 54px;
-    font-size: 17px;
-    padding: 12px 14px;
-  }
-
-  .difficultyGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .calibrationActions {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-
-  .resultGrid {
-    gap: 10px;
-  }
-
-  .resultRow {
-    grid-template-columns: 110px 1fr;
-    gap: 10px;
-  }
-
-  .shareRow {
-    display: grid;
-    grid-template-columns: 1fr;
-  }
+@media (max-width: 640px){
+  .hudPanelV2{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .statCardV2{min-height:60px;padding:10px 12px;}
+  .pitchRoadV2{height:104px;}
+  .studioCta__button{width:100%;}
 }
